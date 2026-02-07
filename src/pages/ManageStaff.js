@@ -2,19 +2,33 @@ import { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
-import { FaUserPlus, FaUserTie, FaEnvelope, FaPhone, FaEdit, FaTimes, FaCheck, FaKey } from 'react-icons/fa';
+import {
+    FaUserPlus, FaSearch, FaEllipsisV,
+    FaUserTie, FaEnvelope, FaPhone, FaTimes, FaCheck, FaKey, FaEdit, FaTrash
+} from 'react-icons/fa';
 
 const ManageStaff = () => {
+    const { user } = useContext(AuthContext);
     const [staff, setStaff] = useState([]);
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [email, setEmail] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [editingStaffId, setEditingStaffId] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('All');
+
+    // Modal & Form States
+    const [showModal, setShowModal] = useState(false);
+    const [activeMenu, setActiveMenu] = useState(null);
+    const [editingMember, setEditingMember] = useState(null);
+    const [formData, setFormData] = useState({
+        username: '',
+        email: '',
+        phoneNumber: '',
+        password: '',
+        isTwoFactorEnabled: false
+    });
+
+    // Reset Password Modal State
     const [resetPasswordModal, setResetPasswordModal] = useState(null);
     const [newPassword, setNewPassword] = useState('');
-    const { user } = useContext(AuthContext);
 
     const fetchStaff = useCallback(async () => {
         try {
@@ -30,54 +44,77 @@ const ManageStaff = () => {
         fetchStaff();
     }, [fetchStaff]);
 
-    const handleAddStaff = async (e) => {
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handlePhoneChange = (e) => {
+        const value = e.target.value.replace(/\D/g, '');
+        setFormData(prev => ({ ...prev, phoneNumber: value }));
+    };
+
+    const openModal = (member = null) => {
+        if (member) {
+            setEditingMember(member);
+            setFormData({
+                username: member.username,
+                email: member.email,
+                phoneNumber: member.phoneNumber ? member.phoneNumber.replace('+44', '') : '',
+                password: '',
+                isTwoFactorEnabled: member.isTwoFactorEnabled || false
+            });
+        } else {
+            setEditingMember(null);
+            setFormData({
+                username: '',
+                email: '',
+                phoneNumber: '',
+                password: '',
+                isTwoFactorEnabled: false
+            });
+        }
+        setShowModal(true);
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setEditingMember(null);
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const formattedPhone = phoneNumber.startsWith('+44') ? phoneNumber : `+44${phoneNumber.replace(/^0/, '')}`;
+            const formattedPhone = formData.phoneNumber.startsWith('+44')
+                ? formData.phoneNumber
+                : `+44${formData.phoneNumber.replace(/^0/, '')}`;
 
-            if (editingStaffId) {
-                await axios.post(`http://localhost:5000/api/auth/staff/${editingStaffId}`, {
-                    username,
-                    password: password || undefined,
-                    email,
-                    phoneNumber: formattedPhone
-                }, config);
-                alert('Staff updated successfully');
+            const payload = {
+                ...formData,
+                phoneNumber: formattedPhone,
+                password: formData.password || undefined
+            };
+
+            if (editingMember) {
+                await axios.post(`http://localhost:5000/api/auth/staff/${editingMember._id}`, payload, config);
+                // alert('Staff updated successfully');
             } else {
-                await axios.post('http://localhost:5000/api/auth/staff', {
-                    username,
-                    password,
-                    email,
-                    phoneNumber: formattedPhone
-                }, config);
-                alert('Staff created successfully');
+                await axios.post('http://localhost:5000/api/auth/staff', payload, config);
+                // alert('Staff created successfully');
             }
 
-            resetForm();
+            closeModal();
             fetchStaff();
         } catch (error) {
             alert(error.response?.data?.message || 'Error processing request');
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleEditClick = (member) => {
-        setEditingStaffId(member._id);
-        setUsername(member.username || '');
-        setEmail(member.email || '');
-        setPhoneNumber(member.phoneNumber ? member.phoneNumber.replace('+44', '') : '');
-        setPassword('');
-    };
-
-    const resetForm = () => {
-        setEditingStaffId(null);
-        setUsername('');
-        setPassword('');
-        setEmail('');
-        setPhoneNumber('');
     };
 
     const handleResetPassword = async () => {
@@ -99,266 +136,364 @@ const ManageStaff = () => {
         }
     };
 
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this staff member? This action will permanently remove their account and all associated data (including uploaded videos).')) {
+            try {
+                const config = { headers: { Authorization: `Bearer ${user.token}` } };
+                await axios.delete(`http://localhost:5000/api/auth/staff/${id}`, config);
+                // alert('Staff member deleted successfully');
+                fetchStaff();
+                setActiveMenu(null);
+            } catch (error) {
+                alert(error.response?.data?.message || 'Error deleting staff member');
+            }
+        }
+    };
+
+    // Filtering Logic
+    const filteredStaff = staff.filter(member => {
+        const matchesSearch = member.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            member.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = filterStatus === 'All' ||
+            (filterStatus === 'Active' && true) || // All are active for now
+            (filterStatus === 'Inactive' && false);
+        return matchesSearch && matchesStatus;
+    });
+
     return (
         <DashboardLayout>
-            <div className="w-full px-6">
-                <header className="mb-6 md:mb-8 border-b pb-4 border-gray-200">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Manage Staff</h1>
-                            <p className="text-sm md:text-base text-gray-500 mt-1">Create, edit, and monitor staff accounts.</p>
-                        </div>
-                        <div className="bg-blue-100 px-4 py-2 rounded-lg">
-                            <p className="text-sm text-gray-600">Total Staff</p>
-                            <p className="text-2xl font-bold text-blue-600">{staff.length}</p>
-                        </div>
+            <div className="w-full px-6 pb-12">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800">Staff</h1>
+                        <p className="text-gray-500 mt-1">Manage your staff members and their account permissions.</p>
                     </div>
-                </header>
+                    <div className="flex gap-3">
 
-                <div className="grid lg:grid-cols-2 gap-8">
-                    {/* Create/Edit Staff Form */}
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                        {/* Form Header */}
-                        <div className={`p-5 ${editingStaffId ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
-                            <div className="flex items-center gap-3 text-white">
-                                <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                                    {editingStaffId ? <FaEdit size={20} /> : <FaUserPlus size={20} />}
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold">
-                                        {editingStaffId ? 'Edit Staff Member' : 'Add New Staff'}
-                                    </h2>
-                                    <p className="text-sm text-white text-opacity-80">
-                                        {editingStaffId ? 'Update staff details' : 'Create a new account'}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Form Body */}
-                        <form onSubmit={handleAddStaff} className="p-6 space-y-5">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="e.g. john_doe"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                                <input
-                                    type="email"
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="john@example.com"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">UK Phone Number</label>
-                                <div className="flex">
-                                    <span className="flex items-center px-4 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-gray-600 font-medium">
-                                        +44
-                                    </span>
-                                    <input
-                                        type="tel"
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                        value={phoneNumber}
-                                        onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                                        placeholder="7123456789"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                    Password
-                                    {editingStaffId && (
-                                        <span className="text-xs text-blue-500 ml-2">(Leave blank to keep current)</span>
-                                    )}
-                                </label>
-                                <input
-                                    type="password"
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    required={!editingStaffId}
-                                />
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className={`flex-1 py-3 rounded-lg font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 ${editingStaffId
-                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
-                                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                                        } disabled:opacity-50`}
-                                >
-                                    {loading ? (
-                                        <div className="spinner-sm border-t-white"></div>
-                                    ) : editingStaffId ? (
-                                        <>
-                                            <FaCheck />
-                                            Update Staff
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FaUserPlus />
-                                            Create Account
-                                        </>
-                                    )}
-                                </button>
-                                {editingStaffId && (
-                                    <button
-                                        type="button"
-                                        onClick={resetForm}
-                                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition flex items-center gap-2"
-                                    >
-                                        <FaTimes />
-                                        Cancel
-                                    </button>
-                                )}
-                            </div>
-                        </form>
-                    </div>
-
-                    {/* Staff List */}
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                        {/* List Header */}
-                        <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-5">
-                            <div className="flex items-center gap-3 text-white">
-                                <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                                    <FaUserTie size={20} />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold">Active Staff</h2>
-                                    <p className="text-sm text-white text-opacity-80">{staff.length} members</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Staff List */}
-                        <div className="p-4 max-h-[500px] overflow-y-auto">
-                            {staff.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <FaUserTie className="mx-auto text-gray-300 mb-4" size={48} />
-                                    <p className="text-gray-500">No staff members found.</p>
-                                    <p className="text-sm text-gray-400 mt-1">Create your first staff account!</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {staff.map((member) => (
-                                        <div
-                                            key={member._id}
-                                            className={`p-4 rounded-xl border-2 transition-all duration-300 hover:shadow-md ${editingStaffId === member._id
-                                                ? 'border-amber-400 bg-amber-50'
-                                                : 'border-gray-100 bg-gray-50 hover:border-gray-200'
-                                                }`}
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
-                                                        {member.username.charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="font-bold text-gray-800">{member.username}</h3>
-                                                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                                                            <FaEnvelope size={12} />
-                                                            <span className="truncate max-w-[150px]">{member.email}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                            <FaPhone size={12} />
-                                                            <span>{member.phoneNumber}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-2">
-                                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
-                                                        Active
-                                                    </span>
-                                                    <div className="flex gap-1">
-                                                        <button
-                                                            onClick={() => handleEditClick(member)}
-                                                            className="flex items-center gap-1 text-xs bg-blue-600 text-white px-2 py-1.5 rounded-lg hover:bg-blue-700 transition font-medium"
-                                                        >
-                                                            <FaEdit size={10} />
-                                                            Edit
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setResetPasswordModal(member)}
-                                                            className="flex items-center gap-1 text-xs bg-amber-500 text-white px-2 py-1.5 rounded-lg hover:bg-amber-600 transition font-medium"
-                                                        >
-                                                            <FaKey size={10} />
-                                                            Reset
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <button
+                            onClick={() => openModal()}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition shadow-sm"
+                        >
+                            <FaUserPlus size={14} />
+                            <span>New Member</span>
+                        </button>
                     </div>
                 </div>
 
-                {/* Reset Password Modal */}
-                {resetPasswordModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-                            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-5">
-                                <div className="flex items-center gap-3 text-white">
-                                    <FaKey size={24} />
-                                    <div>
-                                        <h3 className="text-lg font-bold">Reset Password</h3>
-                                        <p className="text-sm text-white text-opacity-80">
-                                            Set new password for {resetPasswordModal.username}
-                                        </p>
+                {/* Main Content Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                    {/* Toolbar */}
+                    <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        {/* Tabs */}
+                        <div className="flex bg-gray-100 p-1 rounded-lg self-start sm:self-auto">
+                            {['All', 'Active', 'Inactive'].map((status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => setFilterStatus(status)}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${filterStatus === status
+                                        ? 'bg-white text-gray-800 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                >
+                                    {status} {status === 'All' && <span className="ml-1 text-xs opacity-60">({staff.length})</span>}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Search & Filter */}
+                        <div className="flex gap-3 w-full sm:w-auto">
+                            <div className="relative flex-1 sm:w-64">
+                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-x-auto lg:overflow-visible">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0">
+                                <tr>
+                                    <th className="px-6 py-4 w-10">
+                                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                    </th>
+                                    <th className="px-6 py-4">Member Name</th>
+                                    <th className="px-6 py-4">Contact Details</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {filteredStaff.length > 0 ? (
+                                    filteredStaff.map((member) => (
+                                        <tr key={member._id} className="hover:bg-gray-50 transition relative">
+                                            <td className="px-6 py-4">
+                                                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm">
+                                                        {member.username.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-800">{member.username}</p>
+                                                        <p className="text-xs text-gray-500">Staff Member</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <FaPhone size={12} className="text-gray-400" />
+                                                        {member.phoneNumber}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                        <FaEnvelope size={10} className="text-gray-400" />
+                                                        {member.email}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                    Available
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="relative inline-block">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveMenu(activeMenu === member._id ? null : member._id);
+                                                        }}
+                                                        className={`p-2 rounded-full transition ${activeMenu === member._id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                    >
+                                                        <FaEllipsisV />
+                                                    </button>
+
+                                                    {/* Dropdown Menu */}
+                                                    {activeMenu === member._id && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)}></div>
+                                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-20 p-1 animate-fade-in origin-top-right">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        openModal(member);
+                                                                        setActiveMenu(null);
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md flex items-center gap-2 transition"
+                                                                >
+                                                                    <FaEdit size={14} className="text-gray-400" /> Edit Details
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setResetPasswordModal(member);
+                                                                        setActiveMenu(null);
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 rounded-md flex items-center gap-2 transition"
+                                                                >
+                                                                    <FaKey size={14} className="text-amber-500/70" /> Reset Password
+                                                                </button>
+                                                                <div className="h-px bg-gray-100 my-1"></div>
+                                                                <button
+                                                                    onClick={() => handleDelete(member._id)}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center gap-2 transition"
+                                                                >
+                                                                    <FaTrash size={14} className="text-red-500/70" /> Delete Member
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                                            No staff members found matching your filters.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination (Visual Only) */}
+                    <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+                        <p>Showing <span className="font-medium text-gray-800">1-{filteredStaff.length}</span> of <span className="font-medium text-gray-800">{filteredStaff.length}</span> entries</p>
+                        <div className="flex gap-2">
+                            <button className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50" disabled>Previous</button>
+                            <button className="px-3 py-1 border border-gray-200 rounded bg-blue-50 text-blue-600 border-blue-100 font-medium">1</button>
+                            <button className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50" disabled>Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Add/Edit Modal */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-xl font-bold text-gray-800">
+                                {editingMember ? 'Edit Staff Member' : 'Add New Member'}
+                            </h3>
+                            <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition">
+                                <FaTimes size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><FaUserTie /></div>
+                                        <input
+                                            type="text"
+                                            name="username"
+                                            value={formData.username}
+                                            onChange={handleInputChange}
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                            placeholder="johndoe"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="col-span-2 sm:col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><FaEnvelope /></div>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleInputChange}
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                            placeholder="john@example.com"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="col-span-2 sm:col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><FaPhone /></div>
+                                        <input
+                                            type="tel"
+                                            name="phoneNumber"
+                                            value={formData.phoneNumber}
+                                            onChange={handlePhoneChange}
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                            placeholder="7700900000"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Password <span className="text-xs font-normal text-gray-400 ml-1">{editingMember ? '(Leave blank to keep current)' : '(Required)'}</span>
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><FaKey /></div>
+                                        <input
+                                            type="password"
+                                            name="password"
+                                            value={formData.password}
+                                            onChange={handleInputChange}
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                            placeholder="••••••••"
+                                            required={!editingMember}
+                                        />
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-6 space-y-4">
+
+                            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                <input
+                                    type="checkbox"
+                                    name="isTwoFactorEnabled"
+                                    checked={formData.isTwoFactorEnabled}
+                                    onChange={handleInputChange}
+                                    className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                                />
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                        New Password
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        placeholder="Enter new password (min 6 characters)"
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    />
+                                    <p className="text-sm font-medium text-blue-900">Enable Two-Factor Authentication</p>
+                                    <p className="text-xs text-blue-700 mt-0.5">User will be required to verify their email on every login.</p>
                                 </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={handleResetPassword}
-                                        className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2.5 rounded-lg font-semibold hover:from-amber-600 hover:to-orange-600 transition"
-                                    >
-                                        Reset Password
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setResetPasswordModal(null);
-                                            setNewPassword('');
-                                        }}
-                                        className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={closeModal}
+                                    className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition shadow-lg shadow-blue-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {loading ? 'Saving...' : (editingMember ? 'Save Changes' : 'Create Member')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Reset Password Modal */}
+            {resetPasswordModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in">
+                        <div className="bg-amber-500 p-6 text-white text-center">
+                            <div className="mx-auto w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3">
+                                <FaKey size={20} />
+                            </div>
+                            <h3 className="text-xl font-bold">Reset Password</h3>
+                            <p className="text-white/80 text-sm mt-1">Set a new password for {resetPasswordModal.username}</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <input
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Enter new password"
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent text-center text-lg"
+                                autoFocus
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => setResetPasswordModal(null)}
+                                    className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg font-medium hover:bg-gray-50 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleResetPassword}
+                                    className="px-4 py-2.5 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition shadow-lg shadow-amber-200"
+                                >
+                                    Confirm Reset
+                                </button>
                             </div>
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 };

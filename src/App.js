@@ -10,6 +10,8 @@ import UploadVideo from './pages/UploadVideo';
 import MyVideos from './pages/MyVideos';
 import VideoView from './pages/VideoView';
 import StaffSettings from './pages/StaffSettings';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -20,6 +22,8 @@ function App() {
             <div className="min-h-screen bg-gray-100">
                 <Routes>
                     <Route path="/" element={<Login />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password/:token" element={<ResetPassword />} />
                     <Route
                         path="/admin"
                         element={

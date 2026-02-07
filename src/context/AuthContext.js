@@ -24,6 +24,26 @@ export const AuthProvider = ({ children }) => {
                 },
             };
             const { data } = await axios.post('http://localhost:5000/api/auth/login', { username, password }, config);
+
+            // Only set user if token is present (authentication complete)
+            if (data.token) {
+                localStorage.setItem('userInfo', JSON.stringify(data));
+                setUser(data);
+            }
+            return data;
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const verify2FA = async (userId, code) => {
+        try {
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            };
+            const { data } = await axios.post('http://localhost:5000/api/auth/verify-2fa', { userId, code }, config);
             localStorage.setItem('userInfo', JSON.stringify(data));
             setUser(data);
             return data;
@@ -43,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>
+        <AuthContext.Provider value={{ user, login, verify2FA, logout, updateUser, loading }}>
             {children}
         </AuthContext.Provider>
     );
