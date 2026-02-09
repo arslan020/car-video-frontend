@@ -3,6 +3,7 @@ import axios from 'axios';
 import { FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import Logo from '../assets/business-logo.png';
+import API_URL from '../config';
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ const ForgotPassword = () => {
         setError('');
 
         try {
-            await axios.post('http://localhost:5000/api/auth/forgot-password', { email });
+            await axios.post(`${API_URL}/api/auth/forgot-password`, { email });
             setMessage('Email sent! Please check your inbox for the reset link.');
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to send email. Please try again.');

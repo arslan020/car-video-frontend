@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import Logo from '../assets/business-logo.png';
+import API_URL from '../config';
 
 const VideoView = () => {
     const { id } = useParams();
@@ -18,7 +19,7 @@ const VideoView = () => {
     useEffect(() => {
         const fetchVideo = async () => {
             try {
-                const { data } = await axios.get(`http://localhost:5000/api/videos/${id}`);
+                const { data } = await axios.get(`${API_URL}/api/videos/${id}`);
                 setVideo(data);
             } catch (err) {
                 setError(true);

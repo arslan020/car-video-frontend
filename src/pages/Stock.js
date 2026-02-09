@@ -3,6 +3,7 @@ import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers } from 'react-icons/fa';
+import API_URL from '../config';
 
 const Stock = () => {
     const [stock, setStock] = useState([]);
@@ -38,7 +39,7 @@ const Stock = () => {
         setLoadingStock(true);
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/autotrader/stock', config);
+            const { data } = await axios.get(`${API_URL}/api/autotrader/stock`, config);
             setStock(data.results || []);
             setLastSyncTime(data.lastSyncTime);
         } catch (error) {
@@ -52,7 +53,7 @@ const Stock = () => {
     const fetchVideos = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/videos', config);
+            const { data } = await axios.get(`${API_URL}/api/videos`, config);
             setVideos(data);
         } catch (error) {
             console.error('Failed to fetch videos', error);
@@ -115,7 +116,7 @@ const Stock = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
             const { data } = await axios.get(
-                `http://localhost:5000/api/autotrader/lookup/${lookupRegistration.replace(/\s/g, '')}`,
+                `${API_URL}/api/autotrader/lookup/${lookupRegistration.replace(/\s/g, '')}`,
                 config
             );
 
@@ -216,7 +217,9 @@ const Stock = () => {
                 }
             };
 
-            await axios.post('http://localhost:5000/api/videos', formData, config);
+
+
+            await axios.post(`${API_URL}/api/videos`, formData, config);
             setUploadSuccess(true);
             fetchVideos(); // Refresh videos list
 
@@ -308,7 +311,7 @@ const Stock = () => {
                 }
             };
 
-            await axios.post('http://localhost:5000/api/videos', formData, config);
+            await axios.post(`${API_URL}/api/videos`, formData, config);
             setUploadSuccess(true);
             fetchVideos(); // Refresh videos
 

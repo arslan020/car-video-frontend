@@ -4,6 +4,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import { FaUserTie, FaCar, FaVideo, FaArrowRight } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import API_URL from '../config';
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState({
@@ -19,17 +20,17 @@ const AdminDashboard = () => {
         setLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const staffRes = await axios.get('http://localhost:5000/api/auth/staff', config);
+            const staffRes = await axios.get(`${API_URL}/api/auth/staff`, config);
 
             let stockCount = 0;
             try {
-                const stockRes = await axios.get('http://localhost:5000/api/autotrader/stock', config);
+                const stockRes = await axios.get(`${API_URL}/api/autotrader/stock`, config);
                 stockCount = stockRes.data.results?.length || 0;
             } catch (e) {
                 stockCount = 0;
             }
 
-            const videoRes = await axios.get('http://localhost:5000/api/videos', config);
+            const videoRes = await axios.get(`${API_URL}/api/videos`, config);
 
             setStats({
                 staffCount: staffRes.data.length,

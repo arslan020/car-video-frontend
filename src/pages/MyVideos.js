@@ -3,6 +3,7 @@ import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import { FaVideo, FaCopy, FaTrash, FaEye, FaCalendar, FaUser, FaPlay, FaTimes, FaExternalLinkAlt } from 'react-icons/fa';
+import API_URL from '../config';
 
 const MyVideos = () => {
     const [videos, setVideos] = useState([]);
@@ -13,7 +14,7 @@ const MyVideos = () => {
     const fetchVideos = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/videos', config);
+            const { data } = await axios.get(`${API_URL}/api/videos`, config);
             setVideos(data);
         } catch (error) {
             console.error(error);
@@ -37,7 +38,7 @@ const MyVideos = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`http://localhost:5000/api/videos/${id}`, config);
+            await axios.delete(`${API_URL}/api/videos/${id}`, config);
             setVideos(videos.filter(v => v._id !== id));
             alert('Video deleted successfully');
         } catch (error) {

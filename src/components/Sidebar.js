@@ -9,9 +9,9 @@ const Sidebar = ({ user }) => {
 
     const adminMenuItems = [
         { icon: FaHome, label: 'Dashboard', path: '/admin' },
-        { icon: FaUsersCog, label: 'Manage Staff', path: '/admin/staff' },
         { icon: FaCar, label: 'Browse Vehicles', path: '/admin/stock' },
         { icon: FaVideo, label: 'Uploaded Videos', path: '/staff/videos' },
+        { icon: FaUsersCog, label: 'Manage Staff', path: '/admin/staff' },
         { icon: FaCog, label: 'Settings', path: '/admin/settings' },
     ];
 

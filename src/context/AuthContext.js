@@ -2,6 +2,8 @@ import { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 
+import API_URL from '../config';
+
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -23,7 +25,7 @@ export const AuthProvider = ({ children }) => {
                     'Content-Type': 'application/json',
                 },
             };
-            const { data } = await axios.post('http://localhost:5000/api/auth/login', { username, password }, config);
+            const { data } = await axios.post(`${API_URL}/api/auth/login`, { username, password }, config);
 
             // Only set user if token is present (authentication complete)
             if (data.token) {
@@ -43,7 +45,7 @@ export const AuthProvider = ({ children }) => {
                     'Content-Type': 'application/json',
                 },
             };
-            const { data } = await axios.post('http://localhost:5000/api/auth/verify-2fa', { userId, code }, config);
+            const { data } = await axios.post(`${API_URL}/api/auth/verify-2fa`, { userId, code }, config);
             localStorage.setItem('userInfo', JSON.stringify(data));
             setUser(data);
             return data;

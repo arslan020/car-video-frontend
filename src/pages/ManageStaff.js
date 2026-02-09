@@ -6,9 +6,11 @@ import {
     FaUserPlus, FaSearch, FaEllipsisV,
     FaUserTie, FaEnvelope, FaPhone, FaTimes, FaCheck, FaKey, FaEdit, FaTrash
 } from 'react-icons/fa';
+import API_URL from '../config';
 
 const ManageStaff = () => {
     const { user } = useContext(AuthContext);
+    // Force update to trigger recompile
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -33,7 +35,7 @@ const ManageStaff = () => {
     const fetchStaff = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/auth/staff', config);
+            const { data } = await axios.get(`${API_URL}/api/auth/staff`, config);
             setStaff(data);
         } catch (error) {
             console.error(error);
@@ -101,10 +103,10 @@ const ManageStaff = () => {
             };
 
             if (editingMember) {
-                await axios.post(`http://localhost:5000/api/auth/staff/${editingMember._id}`, payload, config);
+                await axios.post(`${API_URL}/api/auth/staff/${editingMember._id}`, payload, config);
                 // alert('Staff updated successfully');
             } else {
-                await axios.post('http://localhost:5000/api/auth/staff', payload, config);
+                await axios.post(`${API_URL}/api/auth/staff`, payload, config);
                 // alert('Staff created successfully');
             }
 
@@ -125,7 +127,7 @@ const ManageStaff = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`http://localhost:5000/api/auth/staff/${resetPasswordModal._id}`, {
+            await axios.post(`${API_URL}/api/auth/staff/${resetPasswordModal._id}`, {
                 password: newPassword
             }, config);
             alert('Password reset successfully!');
@@ -140,7 +142,7 @@ const ManageStaff = () => {
         if (window.confirm('Are you sure you want to delete this staff member? This action will permanently remove their account and all associated data (including uploaded videos).')) {
             try {
                 const config = { headers: { Authorization: `Bearer ${user.token}` } };
-                await axios.delete(`http://localhost:5000/api/auth/staff/${id}`, config);
+                await axios.delete(`${API_URL}/api/auth/staff/${id}`, config);
                 // alert('Staff member deleted successfully');
                 fetchStaff();
                 setActiveMenu(null);

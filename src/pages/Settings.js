@@ -4,6 +4,7 @@ import AuthContext from '../context/AuthContext';
 import { FaSignOutAlt, FaUserShield, FaUser, FaEdit, FaLock, FaEnvelope, FaPhone, FaShieldAlt, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_URL from '../config';
 
 const Settings = () => {
     const { user, logout, updateUser } = useContext(AuthContext);
@@ -69,7 +70,7 @@ const Settings = () => {
             }
 
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.put('http://localhost:5000/api/auth/profile', updateData, config);
+            const { data } = await axios.put(`${API_URL}/api/auth/profile`, updateData, config);
 
             updateUser(data);
             setMessage({ type: 'success', text: data.message || 'Profile updated successfully!' });

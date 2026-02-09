@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import InstallApp from '../components/InstallApp';
+import API_URL from '../config';
 
 const StaffSettings = () => {
     const { user, logout, updateUser } = useContext(AuthContext);
@@ -48,7 +49,9 @@ const StaffSettings = () => {
                 ...(formData.newPassword && { password: formData.newPassword })
             };
 
-            const { data } = await axios.put('http://localhost:5000/api/auth/profile', updateData, config);
+
+
+            const { data } = await axios.put(`${API_URL}/api/auth/profile`, updateData, config);
             updateUser({ ...user, username: data.username });
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
             setShowProfileForm(false);

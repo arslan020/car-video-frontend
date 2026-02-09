@@ -4,6 +4,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import { FaCloudUploadAlt, FaCar, FaVideo, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
+import API_URL from '../config';
 
 const UploadVideo = () => {
     const [file, setFile] = useState(null);
@@ -94,7 +95,7 @@ const UploadVideo = () => {
                     setUploadProgress(percentCompleted);
                 },
             };
-            await axios.post('http://localhost:5000/api/videos', formData, config);
+            await axios.post(`${API_URL}/api/videos`, formData, config);
             setUploadSuccess(true);
             setTimeout(() => {
                 navigate('/staff/videos');

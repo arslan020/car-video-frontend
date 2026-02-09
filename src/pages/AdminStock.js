@@ -3,6 +3,7 @@ import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import { FaCar, FaCopy, FaCheck, FaExternalLinkAlt, FaPaperPlane, FaSearch } from 'react-icons/fa';
+import API_URL from '../config';
 
 const AdminStock = () => {
     const [stock, setStock] = useState([]);
@@ -26,7 +27,7 @@ const AdminStock = () => {
         setLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/autotrader/stock', config);
+            const { data } = await axios.get(`${API_URL}/api/autotrader/stock`, config);
             setStock(data.results || []);
             setLastSyncTime(data.lastSyncTime);
 
@@ -52,7 +53,7 @@ const AdminStock = () => {
     const fetchVideos = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/videos', config);
+            const { data } = await axios.get(`${API_URL}/api/videos`, config);
             setVideos(data);
         } catch (error) {
             console.error('Failed to fetch videos', error);
@@ -406,7 +407,7 @@ const AdminStock = () => {
                                         const videoLink = `${window.location.origin}/view/${selectedVideo._id}`;
                                         const config = { headers: { Authorization: `Bearer ${user.token}` } };
 
-                                        await axios.post('http://localhost:5000/api/send-link', {
+                                        await axios.post(`${API_URL}/api/send-link`, {
                                             email: sendEmail || null,
                                             mobile: sendMobile || null,
                                             videoLink,

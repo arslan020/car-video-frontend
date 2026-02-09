@@ -8,6 +8,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import InstallApp from '../components/InstallApp';
+import API_URL from '../config';
 
 const AdminSettings = () => {
     const { user, logout, updateUser } = useContext(AuthContext);
@@ -73,7 +74,7 @@ const AdminSettings = () => {
             }
 
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.put('http://localhost:5000/api/auth/profile', updateData, config);
+            const { data } = await axios.put(`${API_URL}/api/auth/profile`, updateData, config);
 
             updateUser(data);
             setMessage({ type: 'success', text: data.message || 'Profile updated successfully!' });

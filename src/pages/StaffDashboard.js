@@ -3,6 +3,7 @@ import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import { FaCloudUploadAlt, FaVideo, FaLink, FaCopy, FaCar, FaEye, FaClock, FaChartLine } from 'react-icons/fa';
+import API_URL from '../config';
 
 const StaffDashboard = () => {
     const [file, setFile] = useState(null);
@@ -17,7 +18,7 @@ const StaffDashboard = () => {
     const fetchVideos = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/videos', config);
+            const { data } = await axios.get(`${API_URL}/api/videos`, config);
             setVideos(data);
         } catch (error) {
             console.error(error);
@@ -28,7 +29,7 @@ const StaffDashboard = () => {
         setLoadingStock(true);
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get('http://localhost:5000/api/autotrader/stock', config);
+            const { data } = await axios.get(`${API_URL}/api/autotrader/stock`, config);
             // API returns { results: [...] } directly
             setStock(data.results || []);
         } catch (error) {
@@ -72,7 +73,7 @@ const StaffDashboard = () => {
                     Authorization: `Bearer ${user.token}`,
                 },
             };
-            await axios.post('http://localhost:5000/api/videos', formData, config);
+            await axios.post(`${API_URL}/api/videos`, formData, config);
             setFile(null);
             setSelectedCar(null); // Reset selection
             fetchVideos();

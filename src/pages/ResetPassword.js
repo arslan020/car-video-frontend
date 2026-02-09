@@ -3,6 +3,7 @@ import axios from 'axios';
 import { FaLock, FaCheckCircle } from 'react-icons/fa';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Logo from '../assets/business-logo.png';
+import API_URL from '../config';
 
 const ResetPassword = () => {
     const [password, setPassword] = useState('');
@@ -30,7 +31,7 @@ const ResetPassword = () => {
         setError('');
 
         try {
-            const { data } = await axios.put(`http://localhost:5000/api/auth/reset-password/${token}`, { password });
+            const { data } = await axios.put(`${API_URL}/api/auth/reset-password/${token}`, { password });
             setMessage('Password reset successful! You can now login.');
         } catch (err) {
             setError(err.response?.data?.message || 'Invalid or expired token.');
