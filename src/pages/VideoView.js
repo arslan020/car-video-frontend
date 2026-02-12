@@ -70,16 +70,39 @@ const VideoView = () => {
                         <div className={`w-full ${video.vehicleDetails ? 'lg:w-[65%]' : 'lg:w-full'} space-y-6`}>
                             <div className="bg-black rounded-xl overflow-hidden shadow-2xl ring-1 ring-gray-200">
                                 <div className="relative pt-[56.25%]">
-                                    <video
-                                        className="absolute top-0 left-0 w-full h-full"
-                                        controls
-                                        autoPlay
-                                        playsInline
-                                        src={video.videoUrl}
-                                        poster={video.thumbnailUrl}
-                                    >
-                                        Your browser does not support the video tag.
-                                    </video>
+                                    {video.videoSource === 'youtube' ? (
+                                        /* YouTube Embedded Player */
+                                        <iframe
+                                            className="absolute top-0 left-0 w-full h-full"
+                                            src={video.videoUrl}
+                                            title={video.title || 'Car Video'}
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        ></iframe>
+                                    ) : video.videoSource === 'cloudflare' ? (
+                                        /* Cloudflare Stream Player */
+                                        <iframe
+                                            className="absolute top-0 left-0 w-full h-full"
+                                            src={video.videoUrl}
+                                            title={video.title || 'Car Video'}
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        ></iframe>
+                                    ) : (
+                                        /* Cloudinary Video Player */
+                                        <video
+                                            className="absolute top-0 left-0 w-full h-full"
+                                            controls
+                                            autoPlay
+                                            playsInline
+                                            src={video.videoUrl}
+                                            poster={video.thumbnailUrl}
+                                        >
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    )}
                                 </div>
                             </div>
 

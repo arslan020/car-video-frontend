@@ -21,7 +21,7 @@ const Stock = () => {
     const [fetchedVehicle, setFetchedVehicle] = useState(null);
     const [lastSyncTime, setLastSyncTime] = useState(null);
 
-    // Common Upload States
+    // Upload States (File upload)
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -96,9 +96,9 @@ const Stock = () => {
 
     const resetUploadState = () => {
         setSelectedFile(null);
-        setUploadProgress(0);
         setUploadSuccess(false);
         setUploadError('');
+        setUploadProgress(0);
         setLookupLoading(false);
     };
 
@@ -167,61 +167,40 @@ const Stock = () => {
         }
     };
 
-    const handleFileSelect = (file) => {
-        if (file && file.type.startsWith('video/')) {
-            setSelectedFile(file);
-            setUploadError('');
-        } else {
-            setUploadError('Please select a valid video file');
-        }
-    };
 
-    const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
-    const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-        handleFileSelect(e.dataTransfer.files[0]);
-    };
+
+
 
     const handleUpload = async () => {
         if (!selectedFile || !fetchedVehicle) return;
 
         setUploading(true);
+        setUploadError('');
         setUploadProgress(0);
 
-        const formData = new FormData();
-        formData.append('video', selectedFile);
-
-        // Construct a descriptive title
-        const title = `${fetchedVehicle.make} ${fetchedVehicle.model} - ${fetchedVehicle.registration}`;
-        formData.append('title', title);
-
-        // Pass individual fields for search/indexing
-        formData.append('make', fetchedVehicle.make);
-        formData.append('model', fetchedVehicle.model);
-        formData.append('registration', fetchedVehicle.registration);
-
-        // Pass the FULL vehicle object for the view page
-        formData.append('vehicleDetails', JSON.stringify(fetchedVehicle));
-
         try {
+            const formData = new FormData();
+            formData.append('video', selectedFile);
+            formData.append('title', `${fetchedVehicle.make} ${fetchedVehicle.model} - ${fetchedVehicle.registration}`);
+            formData.append('make', fetchedVehicle.make);
+            formData.append('model', fetchedVehicle.model);
+            formData.append('registration', fetchedVehicle.registration);
+            formData.append('vehicleDetails', JSON.stringify(fetchedVehicle));
+
             const config = {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${user.token}`
                 },
                 onUploadProgress: (progressEvent) => {
-                    const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percent);
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setUploadProgress(percentCompleted);
                 }
             };
 
-
-
             await axios.post(`${API_URL}/api/videos`, formData, config);
             setUploadSuccess(true);
-            fetchVideos(); // Refresh videos list
+            fetchVideos();
 
             setTimeout(() => {
                 closeSmartUpload();
@@ -239,26 +218,49 @@ const Stock = () => {
         return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
-    // Direct upload for stock items (no lookup needed)
-    const handleDirectUpload = async (file, stockItem) => {
-        if (!file) return;
+    // File selection handlers
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('video/')) {
+            setSelectedFile(file);
+            setUploadError('');
+        } else {
+            setUploadError('Please select a valid video file');
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('video/')) {
+            setSelectedFile(file);
+            setUploadError('');
+        } else {
+            setUploadError('Please drop a valid video file');
+        }
+    };
+
+    // Direct upload for stock items (File upload)
+    const handleDirectUpload = async (stockItem) => {
+        if (!selectedFile) return;
 
         setUploading(true);
-        setUploadProgress(0);
         setUploadError('');
+        setUploadProgress(0);
 
-        const formData = new FormData();
-        formData.append('video', file);
-
-        // Use stock item data directly
         const vehicle = stockItem.vehicle;
-        const title = `${vehicle.make} ${vehicle.model} - ${vehicle.registration}`;
-        formData.append('title', title);
-        formData.append('make', vehicle.make);
-        formData.append('model', vehicle.model);
-        formData.append('registration', vehicle.registration);
-
-        // Convert AutoTrader stock format to vehicleDetails format
         const vehicleDetails = {
             registration: vehicle.registration,
             make: vehicle.make,
@@ -271,49 +273,50 @@ const Stock = () => {
             engineSize: vehicle.engineCapacityCC,
             firstRegistrationDate: vehicle.firstRegistrationDate,
             odometerReadingMiles: vehicle.odometerReadingMiles,
-            // Performance
             enginePowerBHP: vehicle.enginePowerBHP,
             accelerationSeconds: vehicle.accelerationSeconds,
             topSpeedMPH: vehicle.topSpeedMPH,
-            // Economy
             fuelEconomyWLTPCombinedMPG: vehicle.fuelEconomyWLTPCombinedMPG,
             fuelEconomyNEDCCombinedMPG: vehicle.fuelEconomyNEDCCombinedMPG,
             co2EmissionGPKM: vehicle.co2EmissionGPKM,
             emissionClass: vehicle.emissionClass,
-            // Dimensions
             doors: vehicle.doors,
             seats: vehicle.seats,
             bootSpaceSeatsUpLitres: vehicle.bootSpaceSeatsUpLitres,
             minimumKerbWeightKG: vehicle.minimumKerbWeightKG,
-            // Additional Info
             insuranceGroup: vehicle.insuranceGroup,
             previousOwners: vehicle.previousOwners,
             motExpiryDate: vehicle.motExpiryDate,
             serviceHistory: vehicle.serviceHistory,
-            // Features & Highlights
             highlights: stockItem.highlights || [],
             features: stockItem.features || [],
             provider: 'AutoTrader',
             rawData: stockItem
         };
 
-        formData.append('vehicleDetails', JSON.stringify(vehicleDetails));
-
         try {
+            const formData = new FormData();
+            formData.append('video', selectedFile);
+            formData.append('title', `${vehicle.make} ${vehicle.model} - ${vehicle.registration}`);
+            formData.append('make', vehicle.make);
+            formData.append('model', vehicle.model);
+            formData.append('registration', vehicle.registration);
+            formData.append('vehicleDetails', JSON.stringify(vehicleDetails));
+
             const config = {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${user.token}`
                 },
                 onUploadProgress: (progressEvent) => {
-                    const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percent);
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setUploadProgress(percentCompleted);
                 }
             };
 
             await axios.post(`${API_URL}/api/videos`, formData, config);
             setUploadSuccess(true);
-            fetchVideos(); // Refresh videos
+            fetchVideos();
 
             setTimeout(() => {
                 setDirectUploadOpen(false);
@@ -594,17 +597,16 @@ const Stock = () => {
                                     {/* Upload Section */}
                                     {!uploadSuccess ? (
                                         <div className="border-t pt-2">
-                                            <h4 className="font-bold text-gray-700 mb-3">Upload Video for this Vehicle</h4>
+                                            <h4 className="font-bold text-gray-700 mb-3">Upload Video File</h4>
 
+                                            {/* File Upload Drag and Drop */}
                                             <div
                                                 onDragOver={handleDragOver}
                                                 onDragLeave={handleDragLeave}
                                                 onDrop={handleDrop}
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging
-                                                    ? 'border-blue-500 bg-blue-50'
-                                                    : selectedFile
-                                                        ? 'border-green-500 bg-green-50'
+                                                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all mb-4 ${isDragging
+                                                        ? 'border-blue-500 bg-blue-50'
                                                         : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
                                                     }`}
                                             >
@@ -612,38 +614,57 @@ const Stock = () => {
                                                     ref={fileInputRef}
                                                     type="file"
                                                     accept="video/*"
-                                                    onChange={(e) => handleFileSelect(e.target.files[0])}
+                                                    onChange={handleFileSelect}
                                                     className="hidden"
+                                                />
+
+                                                <FaCloudUploadAlt
+                                                    className={`mx-auto mb-3 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`}
+                                                    size={40}
                                                 />
 
                                                 {selectedFile ? (
                                                     <div>
-                                                        <FaFile className="mx-auto text-green-500 mb-3" size={40} />
-                                                        <p className="font-semibold text-gray-800">{selectedFile.name}</p>
-                                                        <p className="text-sm text-gray-500 mt-1">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                                        <p className="text-green-600 font-medium mb-1">
+                                                            ✓ {selectedFile.name}
+                                                        </p>
+                                                        <p className="text-sm text-gray-500">
+                                                            {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                                                        </p>
+                                                        <p className="text-xs text-gray-400 mt-2">
+                                                            Click to change file
+                                                        </p>
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <FaCloudUploadAlt className="mx-auto text-gray-400 mb-3" size={40} />
-                                                        <p className="font-medium text-gray-600">Drag & drop video here or click to browse</p>
+                                                        <p className="text-gray-700 font-medium mb-1">
+                                                            Drop video file here or click to browse
+                                                        </p>
+                                                        <p className="text-sm text-gray-500">
+                                                            Supports MP4, MOV, AVI and other video formats
+                                                        </p>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            {uploadError && (
-                                                <div className="mt-3 text-red-600 text-sm font-medium text-center">{uploadError}</div>
-                                            )}
-
+                                            {/* Upload Progress */}
                                             {uploading && (
-                                                <div className="mt-4">
-                                                    <div className="flex justify-between text-xs mb-1">
-                                                        <span>Uploading...</span>
-                                                        <span>{uploadProgress}%</span>
+                                                <div className="space-y-2 mb-4">
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-gray-600">Uploading to Cloudflare Stream...</span>
+                                                        <span className="text-blue-600 font-medium">{uploadProgress}%</span>
                                                     </div>
-                                                    <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                        <div className="bg-blue-600 h-1.5 rounded-full transition-all" style={{ width: `${uploadProgress}%` }}></div>
+                                                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                                        <div
+                                                            className="bg-gradient-to-r from-blue-500 to-purple-500 h-2.5 rounded-full transition-all duration-300"
+                                                            style={{ width: `${uploadProgress}%` }}
+                                                        />
                                                     </div>
                                                 </div>
+                                            )}
+
+                                            {uploadError && (
+                                                <div className="mt-3 text-red-600 text-sm font-medium text-center">{uploadError}</div>
                                             )}
 
                                             <div className="mt-6 flex justify-end gap-3">
@@ -738,64 +759,75 @@ const Stock = () => {
                             {/* Upload Section */}
                             {!uploadSuccess ? (
                                 <div>
-                                    <h4 className="font-bold text-gray-700 mb-3">Select Video File</h4>
+                                    <h4 className="font-bold text-gray-700 mb-3">Upload Video File</h4>
 
+                                    {/* File Upload Drag and Drop */}
                                     <div
                                         onDragOver={handleDragOver}
                                         onDragLeave={handleDragLeave}
                                         onDrop={handleDrop}
                                         onClick={() => fileInputRef.current?.click()}
-                                        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging
+                                        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all mb-4 ${isDragging
                                             ? 'border-blue-500 bg-blue-50'
-                                            : selectedFile
-                                                ? 'border-green-500 bg-green-50'
-                                                : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                                            : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
                                             }`}
                                     >
                                         <input
                                             ref={fileInputRef}
                                             type="file"
                                             accept="video/*"
-                                            onChange={(e) => handleFileSelect(e.target.files[0])}
+                                            onChange={handleFileSelect}
                                             className="hidden"
+                                        />
+
+                                        <FaCloudUploadAlt
+                                            className={`mx-auto mb-3 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`}
+                                            size={40}
                                         />
 
                                         {selectedFile ? (
                                             <div>
-                                                <FaFile className="mx-auto text-green-500 mb-3" size={40} />
-                                                <p className="font-semibold text-gray-800">{selectedFile.name}</p>
-                                                <p className="text-sm text-gray-500 mt-1">
+                                                <p className="text-green-600 font-medium mb-1">
+                                                    ✓ {selectedFile.name}
+                                                </p>
+                                                <p className="text-sm text-gray-500">
                                                     {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-2">
+                                                    Click to change file
                                                 </p>
                                             </div>
                                         ) : (
                                             <div>
-                                                <FaCloudUploadAlt className="mx-auto text-gray-400 mb-3" size={40} />
-                                                <p className="font-medium text-gray-600">
-                                                    Drag & drop video here or click to browse
+                                                <p className="text-gray-700 font-medium mb-1">
+                                                    Drop video file here or click to browse
+                                                </p>
+                                                <p className="text-sm text-gray-500">
+                                                    Supports MP4, MOV, AVI and other video formats
                                                 </p>
                                             </div>
                                         )}
                                     </div>
 
-                                    {uploadError && (
-                                        <div className="mt-3 text-red-600 text-sm font-medium text-center">
-                                            {uploadError}
-                                        </div>
-                                    )}
-
+                                    {/* Upload Progress */}
                                     {uploading && (
-                                        <div className="mt-4">
-                                            <div className="flex justify-between text-xs mb-1">
-                                                <span>Uploading...</span>
-                                                <span>{uploadProgress}%</span>
+                                        <div className="space-y-2 mb-4">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Uploading to Cloudflare Stream...</span>
+                                                <span className="text-blue-600 font-medium">{uploadProgress}%</span>
                                             </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                                                 <div
-                                                    className="bg-blue-600 h-1.5 rounded-full transition-all"
+                                                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-2.5 rounded-full transition-all duration-300"
                                                     style={{ width: `${uploadProgress}%` }}
                                                 />
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {uploadError && (
+                                        <div className="mt-3 text-red-600 text-sm font-medium text-center">
+                                            {uploadError}
                                         </div>
                                     )}
 
@@ -812,7 +844,7 @@ const Stock = () => {
                                             Cancel
                                         </button>
                                         <button
-                                            onClick={() => handleDirectUpload(selectedFile, selectedStockItem)}
+                                            onClick={() => handleDirectUpload(selectedStockItem)}
                                             disabled={!selectedFile || uploading}
                                             className="bg-green-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-2"
                                         >
