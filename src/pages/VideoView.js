@@ -9,6 +9,18 @@ const VideoView = () => {
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [showBookingModal, setShowBookingModal] = useState(false);
+    const [bookingData, setBookingData] = useState({
+        customerName: '',
+        customerEmail: '',
+        customerPhone: '',
+        visitDate: '',
+        visitTime: '',
+        notes: ''
+    });
+    const [bookingLoading, setBookingLoading] = useState(false);
+    const [bookingSuccess, setBookingSuccess] = useState(false);
+    const [bookingError, setBookingError] = useState('');
 
     // Helper to format registration (simple spacing)
     const formattedReg = (reg) => {
@@ -29,6 +41,43 @@ const VideoView = () => {
         };
         fetchVideo();
     }, [id]);
+
+    const handleBookingSubmit = async (e) => {
+        e.preventDefault();
+        setBookingLoading(true);
+        setBookingError('');
+
+        try {
+            await axios.post(`${API_URL}/api/bookings`, {
+                videoId: id,
+                ...bookingData
+            });
+            setBookingSuccess(true);
+            setTimeout(() => {
+                setShowBookingModal(false);
+                setBookingSuccess(false);
+                setBookingData({
+                    customerName: '',
+                    customerEmail: '',
+                    customerPhone: '',
+                    visitDate: '',
+                    visitTime: '',
+                    notes: ''
+                });
+            }, 3000);
+        } catch (err) {
+            setBookingError(err.response?.data?.message || 'Failed to book visit. Please try again.');
+        } finally {
+            setBookingLoading(false);
+        }
+    };
+
+    const handleInputChange = (e) => {
+        setBookingData({
+            ...bookingData,
+            [e.target.name]: e.target.value
+        });
+    };
 
     if (loading) {
         return (
@@ -131,6 +180,22 @@ const VideoView = () => {
                                         <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Provided By</p>
                                         <p className="text-sm font-bold text-gray-800">Heston Automotive</p>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Book Showroom Visit Button */}
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-xl shadow-lg text-white">
+                                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-lg font-bold mb-1">Interested in this vehicle?</h3>
+                                        <p className="text-blue-100 text-sm">Book a visit to see it in person at our showroom</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowBookingModal(true)}
+                                        className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-md whitespace-nowrap"
+                                    >
+                                        📅 Book Showroom Visit
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -242,6 +307,144 @@ const VideoView = () => {
                     </div>
                 </div>
             </main>
+
+            {/* Booking Modal */}
+            {showBookingModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800">Book Showroom Visit</h2>
+                                <button
+                                    onClick={() => setShowBookingModal(false)}
+                                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            {bookingSuccess ? (
+                                <div className="text-center py-8">
+                                    <div className="text-6xl mb-4">✅</div>
+                                    <h3 className="text-xl font-bold text-green-600 mb-2">Booking Confirmed!</h3>
+                                    <p className="text-gray-600">We've sent you a confirmation email with all the details.</p>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleBookingSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name *</label>
+                                        <input
+                                            type="text"
+                                            name="customerName"
+                                            value={bookingData.customerName}
+                                            onChange={handleInputChange}
+                                            required
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="John Doe"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Email *</label>
+                                        <input
+                                            type="email"
+                                            name="customerEmail"
+                                            value={bookingData.customerEmail}
+                                            onChange={handleInputChange}
+                                            required
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="john@example.com"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number *</label>
+                                        <input
+                                            type="tel"
+                                            name="customerPhone"
+                                            value={bookingData.customerPhone}
+                                            onChange={handleInputChange}
+                                            required
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="+44 7700 900000"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Preferred Date *</label>
+                                        <input
+                                            type="date"
+                                            name="visitDate"
+                                            value={bookingData.visitDate}
+                                            onChange={handleInputChange}
+                                            required
+                                            min={new Date().toISOString().split('T')[0]}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Preferred Time *</label>
+                                        <select
+                                            name="visitTime"
+                                            value={bookingData.visitTime}
+                                            onChange={handleInputChange}
+                                            required
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                            <option value="">Select a time</option>
+                                            <option value="09:00 AM">09:00 AM</option>
+                                            <option value="10:00 AM">10:00 AM</option>
+                                            <option value="11:00 AM">11:00 AM</option>
+                                            <option value="12:00 PM">12:00 PM</option>
+                                            <option value="01:00 PM">01:00 PM</option>
+                                            <option value="02:00 PM">02:00 PM</option>
+                                            <option value="03:00 PM">03:00 PM</option>
+                                            <option value="04:00 PM">04:00 PM</option>
+                                            <option value="05:00 PM">05:00 PM</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Additional Notes (Optional)</label>
+                                        <textarea
+                                            name="notes"
+                                            value={bookingData.notes}
+                                            onChange={handleInputChange}
+                                            rows="3"
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Any specific questions or requirements?"
+                                        ></textarea>
+                                    </div>
+
+                                    {bookingError && (
+                                        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                                            {bookingError}
+                                        </div>
+                                    )}
+
+                                    <div className="flex gap-3 pt-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowBookingModal(false)}
+                                            className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={bookingLoading}
+                                            className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {bookingLoading ? 'Booking...' : 'Confirm Booking'}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Simple Footer */}
             <footer className="py-6 text-center text-gray-400 text-sm border-t border-gray-200 mt-auto">
