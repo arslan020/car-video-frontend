@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import Logo from '../assets/business-logo.png';
 import API_URL from '../config';
 
 const VideoView = () => {
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
+    const refName = searchParams.get('ref');
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -218,7 +220,9 @@ const VideoView = () => {
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Provided By</p>
-                                        <p className="text-sm font-bold text-gray-800">Heston Automotive</p>
+                                        <p className="text-sm font-bold text-gray-800">
+                                            {refName ? `${decodeURIComponent(refName)} - Sales Executive` : 'Heston Automotive'}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
