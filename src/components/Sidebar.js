@@ -17,9 +17,8 @@ const Sidebar = ({ user }) => {
 
     const staffMenuItems = [
         { icon: FaHome, label: 'Dashboard', path: '/staff' },
-
-        { icon: FaVideo, label: 'My Videos', path: '/staff/videos' },
         { icon: FaCar, label: 'Browse Vehicles', path: '/staff/stock' },
+        { icon: FaVideo, label: 'My Videos', path: '/staff/videos' },
         { icon: FaCog, label: 'Settings', path: '/staff/settings' },
     ];
 

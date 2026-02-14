@@ -19,6 +19,7 @@ const ManageStaff = () => {
     // Modal & Form States
     const [showModal, setShowModal] = useState(false);
     const [activeMenu, setActiveMenu] = useState(null);
+    const [menuPos, setMenuPos] = useState({ top: 0, right: 0 }); // State for dropdown position
     const [editingMember, setEditingMember] = useState(null);
     const [formData, setFormData] = useState({
         username: '',
@@ -274,7 +275,17 @@ const ManageStaff = () => {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setActiveMenu(activeMenu === member._id ? null : member._id);
+                                                            if (activeMenu === member._id) {
+                                                                setActiveMenu(null);
+                                                            } else {
+                                                                // Calculate position for fixed dropdown
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setMenuPos({
+                                                                    top: rect.bottom + 5, // Adding a small gap
+                                                                    right: window.innerWidth - rect.right
+                                                                });
+                                                                setActiveMenu(member._id);
+                                                            }
                                                         }}
                                                         className={`p-2 rounded-full transition ${activeMenu === member._id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
                                                     >
@@ -284,8 +295,11 @@ const ManageStaff = () => {
                                                     {/* Dropdown Menu */}
                                                     {activeMenu === member._id && (
                                                         <>
-                                                            <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)}></div>
-                                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-20 p-1 animate-fade-in origin-top-right">
+                                                            <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)}></div>
+                                                            <div
+                                                                className="fixed w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1 animate-fade-in origin-top-right"
+                                                                style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
+                                                            >
                                                                 <button
                                                                     onClick={() => {
                                                                         openModal(member);

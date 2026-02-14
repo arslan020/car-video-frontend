@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
-import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers } from 'react-icons/fa';
+import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers, FaEllipsisV, FaExternalLinkAlt } from 'react-icons/fa';
 import API_URL from '../config';
 
 const Stock = () => {
@@ -33,6 +33,25 @@ const Stock = () => {
     // Direct Upload Modal (for stock items)
     const [directUploadOpen, setDirectUploadOpen] = useState(false);
     const [selectedStockItem, setSelectedStockItem] = useState(null);
+
+    // Filter & Menu States
+    const [filterStatus, setFilterStatus] = useState('All');
+    const [activeMenu, setActiveMenu] = useState(null);
+    const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+
+    const handleActionClick = (e, itemId) => {
+        e.stopPropagation();
+        if (activeMenu === itemId) {
+            setActiveMenu(null);
+        } else {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setMenuPos({
+                top: rect.bottom + 5,
+                right: window.innerWidth - rect.right
+            });
+            setActiveMenu(itemId);
+        }
+    };
 
 
     const fetchStock = useCallback(async () => {
@@ -339,177 +358,258 @@ const Stock = () => {
         const make = item.vehicle.make?.toLowerCase() || '';
         const model = item.vehicle.model?.toLowerCase() || '';
         const reg = item.vehicle.registration?.toLowerCase() || '';
-        return make.includes(searchString) || model.includes(searchString) || reg.includes(searchString);
+        const matchesSearch = make.includes(searchString) || model.includes(searchString) || reg.includes(searchString);
+
+        const matchingVideos = getMatchingVideos(item);
+        const hasVideo = matchingVideos.length > 0;
+
+        const matchesFilter =
+            filterStatus === 'All' ||
+            (filterStatus === 'With Video' && hasVideo) ||
+            (filterStatus === 'No Video' && !hasVideo);
+
+        return matchesSearch && matchesFilter;
     });
 
     return (
         <DashboardLayout>
-            <div className="w-full px-6">
-                <header className="mb-6 md:mb-8 border-b pb-4 border-gray-200">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-gray-800">All Vehicles</h1>
-                            <p className="text-sm md:text-base text-gray-500 mt-1">Manage inventory and upload videos.</p>
-                        </div>
-                        <div className="flex flex-col md:flex-row gap-3">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Search vehicles..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64"
-                                />
-                                <FaSearch className="absolute left-3 top-4 text-gray-400" />
-                            </div>
-                            <button
-                                onClick={openSmartUpload}
-                                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2 justify-center"
-                            >
-                                <FaVideo />
-                                Upload Video via Registration
-                            </button>
-                        </div>
+            <div className="w-full px-6 pb-12">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800">All Vehicles</h1>
+                        <p className="text-gray-500 mt-1">Manage inventory and upload videos.</p>
+                        {lastSyncTime && (
+                            <p className="text-xs text-gray-400 mt-1">
+                                Last sync: {new Date(lastSyncTime).toLocaleString()}
+                            </p>
+                        )}
                     </div>
-                </header>
+                    <button
+                        onClick={openSmartUpload}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2"
+                    >
+                        <FaVideo />
+                        Upload Video via Registration
+                    </button>
+                </div>
 
-                {loadingStock ? (
-                    <div className="flex justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                {/* Main Content Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                    {/* Toolbar */}
+                    <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        {/* Tabs */}
+                        <div className="flex bg-gray-100 p-1 rounded-lg self-start sm:self-auto">
+                            {['All', 'With Video', 'No Video'].map((status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => setFilterStatus(status)}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${filterStatus === status
+                                        ? 'bg-white text-gray-800 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                >
+                                    {status}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Search */}
+                        <div className="relative flex-1 sm:max-w-xs">
+                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                                type="text"
+                                placeholder="Search vehicles..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
                     </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b-2 border-gray-200 bg-gray-50">
-                                    <th className="text-left py-4 px-6 font-semibold text-sm text-gray-600 uppercase tracking-wider">Image</th>
-                                    <th className="text-left py-4 px-6 font-semibold text-sm text-gray-600 uppercase tracking-wider">Vehicle Details</th>
-                                    <th className="text-left py-4 px-6 font-semibold text-sm text-gray-600 uppercase tracking-wider">Status</th>
-                                    <th className="text-right py-4 px-6 font-semibold text-sm text-gray-600 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredStock.length > 0 ? filteredStock.map((item) => {
-                                    const matchingVideos = getMatchingVideos(item);
-                                    const videoExists = matchingVideos.length > 0;
-                                    return (
-                                        <tr
-                                            key={item.id}
-                                            className="border-b border-gray-100 hover:bg-gray-50 transition"
-                                        >
-                                            {/* Thumbnail */}
-                                            <td className="py-3 px-4">
-                                                <a
-                                                    href={`https://www.autotrader.co.uk/car-search?advertising-location=at_cars&make=${encodeURIComponent(item.vehicle.make)}&model=${encodeURIComponent(item.vehicle.model)}&postcode=ub31da&radius=1500&seller-id=10010747&registration=${encodeURIComponent(item.vehicle.registration)}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="cursor-pointer block"
-                                                >
-                                                    {item.media && item.media.images && item.media.images.length > 0 ? (
-                                                        <img
-                                                            src={item.media.images[0].href || item.media.images[0].url}
-                                                            alt={`${item.vehicle.make} ${item.vehicle.model}`}
-                                                            className="w-20 h-20 object-cover rounded hover:opacity-90 transition"
-                                                            onError={(e) => {
-                                                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80"%3E%3Crect fill="%23e5e7eb" width="80" height="80"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="30"%3E🚗%3C/text%3E%3C/svg%3E';
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center hover:bg-gray-300 transition">
-                                                            <FaCar className="text-gray-400 text-2xl" />
+
+                    {/* Table */}
+                    {loadingStock ? (
+                        <div className="flex justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto lg:overflow-visible">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0">
+                                    <tr>
+                                        <th className="px-6 py-4">Vehicle</th>
+                                        <th className="px-6 py-4">Details</th>
+                                        <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredStock.length > 0 ? filteredStock.map((item) => {
+                                        const matchingVideos = getMatchingVideos(item);
+                                        const videoExists = matchingVideos.length > 0;
+                                        const imageUrl = item.media?.images?.[0]?.href || item.media?.images?.[0]?.url;
+
+                                        return (
+                                            <tr
+                                                key={item.id}
+                                                className="hover:bg-gray-50 transition relative"
+                                            >
+                                                {/* Vehicle Image & Name */}
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-16 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+                                                            {imageUrl ? (
+                                                                <img
+                                                                    src={imageUrl}
+                                                                    alt={item.vehicle.make}
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        e.target.style.display = 'none';
+                                                                        e.target.parentElement.classList.add('flex', 'items-center', 'justify-center');
+                                                                        e.target.parentElement.innerHTML = '<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 576 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg" class="text-gray-400 text-xl"><path d="M480 160H32c-17.67 0-32 14.33-32 32v224c0 17.67 14.33 32 32 32h448c17.67 0 32-14.33 32-32V192c0-17.67-14.33-32-32-32zM80 329.83c-13.62 0-24.6-11.23-24.6-24.91 0-13.69 10.98-24.91 24.6-24.91 13.61 0 24.59 11.23 24.59 24.91 0 13.69-10.98 24.91-24.59 24.91zm160 0c-13.62 0-24.6-11.23-24.6-24.91 0-13.69 10.98-24.91 24.6-24.91 13.61 0 24.59 11.23 24.59 24.91 0 13.69-10.98 24.91-24.59 24.91zm160 0c-13.62 0-24.6-11.23-24.6-24.91 0-13.69 10.98-24.91 24.6-24.91 13.61 0 24.59 11.23 24.59 24.91 0 13.69-10.98 24.91-24.59 24.91zM576 224h-64v-16c0-35.35-28.65-64-64-64h-32V80c0-26.51-21.49-48-48-48H16C7.16 32 0 39.16 0 48v64h128v64h320v48h64c35.35 0 64 28.65 64 64v128c0 35.35-28.65 64-64 64h-64V224z"></path></svg>';
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <div className="flex items-center justify-center w-full h-full text-gray-400">
+                                                                    <FaCar size={20} />
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </a>
-                                            </td>
-
-                                            {/* Vehicle Details */}
-                                            <td className="py-3 px-4">
-                                                <div>
-                                                    <a
-                                                        href={`https://www.autotrader.co.uk/car-search?advertising-location=at_cars&make=${encodeURIComponent(item.vehicle.make)}&model=${encodeURIComponent(item.vehicle.model)}&postcode=ub31da&radius=1500&seller-id=10010747&registration=${encodeURIComponent(item.vehicle.registration)}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="hover:text-blue-600 transition cursor-pointer"
-                                                    >
-                                                        <h3 className="font-bold text-gray-800 text-base">
-                                                            {item.vehicle.make} {item.vehicle.model}
-                                                        </h3>
-                                                    </a>
-                                                    <p className="text-sm text-gray-600">{item.vehicle.derivative}</p>
-                                                    <div className="flex gap-3 mt-1 text-xs text-gray-500">
-                                                        <span className="font-mono font-bold bg-yellow-100 px-2 py-0.5 rounded text-gray-800 border border-yellow-200">
-                                                            {item.vehicle.registration}
-                                                        </span>
-                                                        {(item.vehicle.mileage || item.vehicle.odometerReadingMiles) && (
-                                                            <span>• {(item.vehicle.mileage || item.vehicle.odometerReadingMiles).toLocaleString()} miles</span>
-                                                        )}
+                                                        <div>
+                                                            <h3 className="font-bold text-gray-800 text-sm">
+                                                                {item.vehicle.make} {item.vehicle.model}
+                                                            </h3>
+                                                            <p className="text-xs text-blue-600 font-mono font-medium">{item.vehicle.registration}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
+                                                </td>
 
-                                            {/* Status */}
-                                            <td className="py-3 px-4">
-                                                {videoExists ? (
-                                                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">
-                                                        <FaCheck size={10} />
-                                                        {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium">
-                                                        No Videos
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            {/* Actions */}
-                                            <td className="py-3 px-4">
-                                                <div className="flex flex-col items-end gap-2">
-                                                    {/* Upload Button */}
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedStockItem(item);
-                                                            setDirectUploadOpen(true);
-                                                            setSelectedFile(null);
-                                                            setUploadError('');
-                                                        }}
-                                                        className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition"
-                                                    >
-                                                        <FaCloudUploadAlt />
-                                                        Upload
-                                                    </button>
-
-                                                    {/* Video Links */}
-                                                    {videoExists && (
-                                                        <div className="flex gap-1 mt-1">
-                                                            {matchingVideos.map((vid) => (
-                                                                <button
-                                                                    key={vid._id}
-                                                                    onClick={() => copyToClipboard(vid._id)}
-                                                                    className="flex items-center gap-1 px-2 py-1 rounded text-xs font-bold bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition"
-                                                                    title="Copy Video Link"
-                                                                >
-                                                                    {copiedId === vid._id ? <FaCheck size={10} /> : <FaCopy size={10} />}
-                                                                    Link
-                                                                </button>
-                                                            ))}
+                                                {/* Details */}
+                                                <td className="px-6 py-4">
+                                                    <div className="space-y-1">
+                                                        <p className="text-sm text-gray-600">{item.vehicle.derivative}</p>
+                                                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                            <span className="px-2 py-0.5 bg-gray-100 rounded border border-gray-200">
+                                                                {(item.vehicle.mileage || item.vehicle.odometerReadingMiles)?.toLocaleString()} miles
+                                                            </span>
                                                         </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* Status */}
+                                                <td className="px-6 py-4">
+                                                    {videoExists ? (
+                                                        <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                            {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-400">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                                            No Video
+                                                        </span>
                                                     )}
-                                                </div>
+                                                </td>
+
+                                                {/* Actions */}
+                                                <td className="px-6 py-4 text-right">
+                                                    {videoExists ? (
+                                                        <div className="relative inline-block">
+                                                            <button
+                                                                onClick={(e) => handleActionClick(e, item.id)}
+                                                                className={`p-2 rounded-full transition ${activeMenu === item.id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                            >
+                                                                <FaEllipsisV />
+                                                            </button>
+
+                                                            {/* Dropdown Menu */}
+                                                            {activeMenu === item.id && (
+                                                                <>
+                                                                    <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)}></div>
+                                                                    <div
+                                                                        className="fixed w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1 animate-fade-in origin-top-right"
+                                                                        style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
+                                                                    >
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setSelectedStockItem(item);
+                                                                                setDirectUploadOpen(true);
+                                                                                setSelectedFile(null);
+                                                                                setUploadError('');
+                                                                                setActiveMenu(null);
+                                                                            }}
+                                                                            className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md flex items-center gap-2 transition font-medium"
+                                                                        >
+                                                                            <FaCloudUploadAlt size={14} /> Upload Another
+                                                                        </button>
+
+                                                                        {matchingVideos.map((vid, idx) => (
+                                                                            <div key={vid._id} className="border-t border-gray-50 mt-1 pt-1">
+                                                                                {matchingVideos.length > 1 && (
+                                                                                    <div className="px-4 py-1.5 text-xs font-bold text-gray-400 bg-gray-50 uppercase tracking-wider">
+                                                                                        Video {idx + 1}
+                                                                                    </div>
+                                                                                )}
+                                                                                <button
+                                                                                    onClick={() => copyToClipboard(vid._id)}
+                                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md flex items-center gap-2 transition"
+                                                                                >
+                                                                                    {copiedId === vid._id ? <FaCheck size={14} className="text-green-500" /> : <FaCopy size={14} className="text-gray-400" />}
+                                                                                    {copiedId === vid._id ? 'Copied!' : 'Copy Link'}
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        window.open(`/view/${vid._id}`, '_blank');
+                                                                                        setActiveMenu(null);
+                                                                                    }}
+                                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md flex items-center gap-2 transition"
+                                                                                >
+                                                                                    <FaExternalLinkAlt size={14} className="text-gray-400" /> Open Video
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedStockItem(item);
+                                                                setDirectUploadOpen(true);
+                                                                setSelectedFile(null);
+                                                                setUploadError('');
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow hover:shadow-md"
+                                                        >
+                                                            <FaCloudUploadAlt />
+                                                            Upload
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    }) : (
+                                        <tr>
+                                            <td colSpan="4" className="text-center py-12">
+                                                <FaCar className="mx-auto text-gray-300 mb-4" size={48} />
+                                                <p className="text-gray-500">No stock found matching your filters.</p>
                                             </td>
                                         </tr>
-                                    );
-                                }) : (
-                                    <tr>
-                                        <td colSpan="4" className="text-center py-12">
-                                            <FaCar className="mx-auto text-gray-300 mb-4" size={48} />
-                                            <p className="text-gray-500">No stock found.</p>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Pagination Placeholder */}
+                    <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+                        <p>Showing <span className="font-medium text-gray-800">1-{filteredStock.length}</span> of <span className="font-medium text-gray-800">{filteredStock.length}</span> entries</p>
+                        <div className="flex gap-2">
+                            <span className="text-xs text-gray-400">All data loaded</span>
+                        </div>
                     </div>
-                )}
+                </div>
             </div>
 
             {/* Smart Upload Modal */}
@@ -606,8 +706,8 @@ const Stock = () => {
                                                 onDrop={handleDrop}
                                                 onClick={() => fileInputRef.current?.click()}
                                                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all mb-4 ${isDragging
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
                                                     }`}
                                             >
                                                 <input
