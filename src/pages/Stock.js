@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
-import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers, FaEllipsisV, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers, FaEllipsisV, FaExternalLinkAlt, FaPaperPlane } from 'react-icons/fa';
 import API_URL from '../config';
 
 const Stock = () => {
@@ -38,6 +38,15 @@ const Stock = () => {
     const [filterStatus, setFilterStatus] = useState('All');
     const [activeMenu, setActiveMenu] = useState(null);
     const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+
+    // Send Modal States
+    const [sendModalOpen, setSendModalOpen] = useState(false);
+    const [selectedVideo, setSelectedVideo] = useState(null);
+    const [customerTitle, setCustomerTitle] = useState('Mr');
+    const [customerName, setCustomerName] = useState('');
+    const [sendEmail, setSendEmail] = useState('');
+    const [sendMobile, setSendMobile] = useState('');
+    const [sending, setSending] = useState(false);
 
     const handleActionClick = (e, itemId) => {
         e.stopPropagation();
@@ -566,6 +575,16 @@ const Stock = () => {
                                                                                 >
                                                                                     <FaExternalLinkAlt size={14} className="text-gray-400" /> Open Video
                                                                                 </button>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setSelectedVideo(vid);
+                                                                                        setSendModalOpen(true);
+                                                                                        setActiveMenu(null);
+                                                                                    }}
+                                                                                    className="w-full text-left px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 rounded-md flex items-center gap-2 transition"
+                                                                                >
+                                                                                    <FaPaperPlane size={14} className="text-purple-500/70" /> Send to Customer
+                                                                                </button>
                                                                             </div>
                                                                         ))}
                                                                     </div>
@@ -974,6 +993,107 @@ const Stock = () => {
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Send Link Modal */}
+            {sendModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-xl font-bold text-gray-800">Send Video Link</h3>
+                            <button onClick={() => setSendModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-4 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <select
+                                        value={customerTitle}
+                                        onChange={(e) => setCustomerTitle(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="Mr">Mr</option>
+                                        <option value="Mrs">Mrs</option>
+                                        <option value="Ms">Ms</option>
+                                        <option value="Dr">Dr</option>
+                                    </select>
+                                </div>
+                                <div className="col-span-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                                    <input
+                                        type="text"
+                                        value={customerName}
+                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        placeholder="John Smith"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                <input
+                                    type="email"
+                                    value={sendEmail}
+                                    onChange={(e) => setSendEmail(e.target.value)}
+                                    placeholder="customer@example.com"
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                                <input
+                                    type="tel"
+                                    value={sendMobile}
+                                    onChange={(e) => setSendMobile(e.target.value)}
+                                    placeholder="+44 7700 900000"
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={() => setSendModalOpen(false)}
+                                    className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!customerName || !sendEmail) return;
+                                        setSending(true);
+                                        try {
+                                            const videoLink = `${window.location.origin}/view/${selectedVideo._id}`;
+                                            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+                                            await axios.post(`${API_URL}/api/send-link`, {
+                                                email: sendEmail,
+                                                mobile: sendMobile,
+                                                videoLink,
+                                                vehicleDetails: selectedVideo.vehicleDetails,
+                                                customerName,
+                                                customerTitle
+                                            }, config);
+                                            alert('Video link sent successfully!');
+                                            setSendModalOpen(false);
+                                        } catch (error) {
+                                            alert('Failed to send link.');
+                                        } finally {
+                                            setSending(false);
+                                        }
+                                    }}
+                                    disabled={sending || (!sendEmail && !sendMobile)}
+                                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition shadow-lg shadow-purple-200 disabled:opacity-50"
+                                >
+                                    {sending ? 'Sending...' : 'Send Link'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
