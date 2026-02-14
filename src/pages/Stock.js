@@ -102,7 +102,8 @@ const Stock = () => {
 
     const copyToClipboard = (videoId) => {
         const video = videos.find(v => v._id === videoId);
-        const refName = video?.uploadedBy?.name || video?.uploadedBy?.username || user.name || user.username;
+        // Prioritize current user (Sender), fallback to uploader
+        const refName = user.name || user.username || video?.uploadedBy?.name || video?.uploadedBy?.username;
         const link = `${window.location.origin}/view/${videoId}?ref=${encodeURIComponent(refName)}`;
         navigator.clipboard.writeText(link);
         setCopiedId(videoId);
@@ -1072,7 +1073,8 @@ const Stock = () => {
                                         if (!customerName || !sendEmail) return;
                                         setSending(true);
                                         try {
-                                            const refName = selectedVideo?.uploadedBy?.name || selectedVideo?.uploadedBy?.username || user.name || user.username;
+                                            // Prioritize current user (Sender), fallback to uploader
+                                            const refName = user.name || user.username || selectedVideo?.uploadedBy?.name || selectedVideo?.uploadedBy?.username;
                                             const videoLink = `${window.location.origin}/view/${selectedVideo._id}?ref=${encodeURIComponent(refName)}`;
                                             const config = { headers: { Authorization: `Bearer ${user.token}` } };
                                             await axios.post(`${API_URL}/api/send-link`, {
