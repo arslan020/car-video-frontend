@@ -23,6 +23,7 @@ const ManageStaff = () => {
     const [editingMember, setEditingMember] = useState(null);
     const [formData, setFormData] = useState({
         username: '',
+        name: '',
         email: '',
         phoneNumber: '',
         password: '',
@@ -65,6 +66,7 @@ const ManageStaff = () => {
             setEditingMember(member);
             setFormData({
                 username: member.username,
+                name: member.name || '',
                 email: member.email,
                 phoneNumber: member.phoneNumber ? member.phoneNumber.replace('+44', '') : '',
                 password: '',
@@ -74,6 +76,7 @@ const ManageStaff = () => {
             setEditingMember(null);
             setFormData({
                 username: '',
+                name: '',
                 email: '',
                 phoneNumber: '',
                 password: '',
@@ -247,8 +250,8 @@ const ManageStaff = () => {
                                                         {member.username.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-gray-800">{member.username}</p>
-                                                        <p className="text-xs text-gray-500">Staff Member</p>
+                                                        <p className="font-semibold text-gray-800">{member.name || member.username}</p>
+                                                        <p className="text-xs text-gray-500">@{member.username}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -386,6 +389,21 @@ const ManageStaff = () => {
                                     </div>
                                 </div>
 
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><FaUserTie /></div>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleInputChange}
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                            placeholder="John Doe"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="col-span-2 sm:col-span-1">
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                                     <div className="relative">
@@ -515,4 +533,3 @@ const ManageStaff = () => {
 };
 
 export default ManageStaff;
-
