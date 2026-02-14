@@ -42,6 +42,46 @@ const VideoView = () => {
         fetchVideo();
     }, [id]);
 
+    const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+
+    // Update time slots when date changes
+    useEffect(() => {
+        if (bookingData.visitDate) {
+            const date = new Date(bookingData.visitDate);
+            const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+            let startHour = 10;
+            let endHour = 20; // 8 PM (24-hour format)
+
+            // Saturday: 9 AM - 8 PM
+            if (day === 6) {
+                startHour = 9;
+                endHour = 20;
+            }
+            // Sunday: 10 AM - 6 PM
+            else if (day === 0) {
+                startHour = 10;
+                endHour = 18;
+            }
+            // Monday - Friday: 10 AM - 8 PM (Already set as default)
+
+            const slots = [];
+            for (let hour = startHour; hour < endHour; hour++) {
+                // Determine AM/PM
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const displayHour = hour > 12 ? hour - 12 : hour;
+                const timeString = `${displayHour === 0 ? 12 : displayHour}:00 ${ampm}`;
+                slots.push(timeString);
+            }
+            setAvailableTimeSlots(slots);
+
+            // Clear selected time if it's no longer valid
+            if (bookingData.visitTime && !slots.includes(bookingData.visitTime)) {
+                setBookingData(prev => ({ ...prev, visitTime: '' }));
+            }
+        }
+    }, [bookingData.visitDate]);
+
     const handleBookingSubmit = async (e) => {
         e.preventDefault();
         setBookingLoading(true);
@@ -381,6 +421,9 @@ const VideoView = () => {
                                             min={new Date().toISOString().split('T')[0]}
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Opening Hours: Mon-Fri 10am-8pm, Sat 9am-8pm, Sun 10am-6pm
+                                        </p>
                                     </div>
 
                                     <div>
@@ -390,18 +433,15 @@ const VideoView = () => {
                                             value={bookingData.visitTime}
                                             onChange={handleInputChange}
                                             required
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            disabled={!bookingData.visitDate}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
                                         >
-                                            <option value="">Select a time</option>
-                                            <option value="09:00 AM">09:00 AM</option>
-                                            <option value="10:00 AM">10:00 AM</option>
-                                            <option value="11:00 AM">11:00 AM</option>
-                                            <option value="12:00 PM">12:00 PM</option>
-                                            <option value="01:00 PM">01:00 PM</option>
-                                            <option value="02:00 PM">02:00 PM</option>
-                                            <option value="03:00 PM">03:00 PM</option>
-                                            <option value="04:00 PM">04:00 PM</option>
-                                            <option value="05:00 PM">05:00 PM</option>
+                                            <option value="">{bookingData.visitDate ? 'Select a time' : 'Select a date first'}</option>
+                                            {availableTimeSlots.map((time) => (
+                                                <option key={time} value={time}>
+                                                    {time}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
 
