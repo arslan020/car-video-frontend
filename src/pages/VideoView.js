@@ -24,6 +24,11 @@ const VideoView = () => {
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [bookingError, setBookingError] = useState('');
 
+    // Call Request State
+    const [showCallModal, setShowCallModal] = useState(false);
+    const [callRequestData, setCallRequestData] = useState({ name: '', phone: '' });
+    const [callLoading, setCallLoading] = useState(false);
+
     // Helper to format registration (simple spacing)
     const formattedReg = (reg) => {
         if (!reg) return '';
@@ -119,6 +124,26 @@ const VideoView = () => {
             ...bookingData,
             [e.target.name]: e.target.value
         });
+    };
+
+    const handleCallRequest = async (e) => {
+        e.preventDefault();
+        setCallLoading(true);
+        try {
+            await axios.post(`${API_URL}/api/contact/request-call`, {
+                name: callRequestData.name,
+                phone: callRequestData.phone,
+                vehicleDetails: video.vehicleDetails,
+                videoLink: window.location.href
+            });
+            alert('Callback request sent successfully! We will contact you shortly.');
+            setShowCallModal(false);
+            setCallRequestData({ name: '', phone: '' });
+        } catch (err) {
+            alert('Failed to send request. Please try again.');
+        } finally {
+            setCallLoading(false);
+        }
     };
 
     if (loading) {
@@ -227,18 +252,36 @@ const VideoView = () => {
                                 </div>
                             </div>
 
-                            {/* Book Showroom Visit Button */}
-                            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-xl shadow-lg text-white">
-                                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                                    <div>
-                                        <h3 className="text-lg font-bold mb-1">Interested in this vehicle?</h3>
-                                        <p className="text-blue-100 text-sm">Book a visit to see it in person at our showroom</p>
-                                    </div>
+                            {/* Action Buttons Section */}
+                            <div className="bg-white border border-blue-100 p-6 rounded-xl shadow-sm">
+                                <div className="mb-6 text-center md:text-left">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-1">Interested in this vehicle?</h3>
+                                    <p className="text-gray-500 text-sm">Choose an option below to proceed with your enquiry</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <button
                                         onClick={() => setShowBookingModal(true)}
-                                        className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-md whitespace-nowrap"
+                                        className="flex flex-col items-center justify-center gap-2 bg-blue-600 text-white px-4 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
                                     >
-                                        📅 Book Showroom Visit
+                                        <span className="text-xl">📅</span>
+                                        <span>Book Visit</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => alert('Reserve Car feature coming soon!')}
+                                        className="flex flex-col items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-4 rounded-lg font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
+                                    >
+                                        <span className="text-xl">🔒</span>
+                                        <span>Reserve Car</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowCallModal(true)}
+                                        className="flex flex-col items-center justify-center gap-2 bg-gray-900 text-white px-4 py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors shadow-sm"
+                                    >
+                                        <span className="text-xl">📞</span>
+                                        <span>Request Call</span>
                                     </button>
                                 </div>
                             </div>
@@ -490,10 +533,60 @@ const VideoView = () => {
                 </div>
             )}
 
-            {/* Simple Footer */}
-            <footer className="py-6 text-center text-gray-400 text-sm border-t border-gray-200 mt-auto">
-                <p>© {new Date().getFullYear()} Heston Automotive. All rights reserved.</p>
-            </footer>
+            {/* Request Call Back Modal */}
+            {showCallModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold text-gray-800">Request a Call Back</h2>
+                                <button
+                                    onClick={() => setShowCallModal(false)}
+                                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCallRequest} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Your Name *</label>
+                                    <input
+                                        type="text"
+                                        value={callRequestData.name}
+                                        onChange={(e) => setCallRequestData({ ...callRequestData, name: e.target.value })}
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Enter your name"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number *</label>
+                                    <input
+                                        type="tel"
+                                        value={callRequestData.phone}
+                                        onChange={(e) => setCallRequestData({ ...callRequestData, phone: e.target.value })}
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Enter your number"
+                                    />
+                                </div>
+
+                                <div className="pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={callLoading}
+                                        className="w-full py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                                    >
+                                        {callLoading ? 'Sending Request...' : 'Request Call Back'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
