@@ -101,7 +101,9 @@ const AdminStock = () => {
     });
 
     const copyToClipboard = (videoId) => {
-        const link = `${window.location.origin}/view/${videoId}?ref=${encodeURIComponent(user.name || user.username)}`;
+        const video = videos.find(v => v._id === videoId);
+        const refName = video?.uploadedBy?.name || video?.uploadedBy?.username || user.name || user.username;
+        const link = `${window.location.origin}/view/${videoId}?ref=${encodeURIComponent(refName)}`;
         navigator.clipboard.writeText(link);
         setCopiedId(videoId);
         setTimeout(() => setCopiedId(null), 2000);
@@ -418,7 +420,8 @@ const AdminStock = () => {
                                         if (!customerName || !sendEmail) return;
                                         setSending(true);
                                         try {
-                                            const videoLink = `${window.location.origin}/view/${selectedVideo._id}?ref=${encodeURIComponent(user.name || user.username)}`;
+                                            const refName = selectedVideo?.uploadedBy?.name || selectedVideo?.uploadedBy?.username || user.name || user.username;
+                                            const videoLink = `${window.location.origin}/view/${selectedVideo._id}?ref=${encodeURIComponent(refName)}`;
                                             const config = { headers: { Authorization: `Bearer ${user.token}` } };
                                             await axios.post(`${API_URL}/api/send-link`, {
                                                 email: sendEmail,
