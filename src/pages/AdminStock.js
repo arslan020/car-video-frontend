@@ -74,19 +74,11 @@ const AdminStock = () => {
     }, [fetchStock, fetchVideos]);
 
     // Helper to find matching videos
-    // Helper to find matching videos
     const getMatchingVideos = (stockItem) => {
-        const itemReg = (stockItem.vehicle.registration || '').replace(/\s+/g, '').toUpperCase();
-        if (!itemReg) return [];
-
         return videos.filter(video => {
-            // Check direct registration field
-            const videoReg = (video.registration || '').replace(/\s+/g, '').toUpperCase();
-            if (videoReg) return videoReg === itemReg;
-
-            // Check inside vehicleDetails
-            const detailsReg = (video.vehicleDetails?.registration || '').replace(/\s+/g, '').toUpperCase();
-            return detailsReg === itemReg;
+            const title = video.title || '';
+            const reg = stockItem.vehicle.registration || '';
+            return title.toUpperCase().includes(reg.toUpperCase());
         });
     };
 
@@ -248,10 +240,8 @@ const AdminStock = () => {
                                             // Image handling
                                             const imageUrl = item.media?.images?.[0]?.href || item.media?.images?.[0]?.url;
 
-                                            const uploaderName = matchingVideos[0]?.uploadedBy?.name || matchingVideos[0]?.uploadedBy?.username;
-
                                             return (
-                                                <tr key={item.id} className={`transition relative ${videoExists ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'}`}>
+                                                <tr key={item.id} className="hover:bg-gray-50 transition relative">
                                                     {/* Vehicle Image & Name */}
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-4">
@@ -321,17 +311,10 @@ const AdminStock = () => {
                                                     {/* Status */}
                                                     <td className="px-6 py-4">
                                                         {videoExists ? (
-                                                            <div className="flex flex-col items-start gap-1">
-                                                                <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                                    {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
-                                                                </span>
-                                                                {uploaderName && (
-                                                                    <span className="text-xs text-gray-500">
-                                                                        Uploaded by <span className="font-medium text-gray-700">{uploaderName}</span>
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                            <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
+                                                            </span>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-400">
                                                                 <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>

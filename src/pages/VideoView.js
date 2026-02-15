@@ -277,8 +277,8 @@ const VideoView = () => {
                                             }
                                         }}
                                         className={`flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-lg font-semibold transition-colors shadow-sm ${video.vehicleDetails?.reserveLink
-                                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed hover:bg-gray-200'
+                                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed hover:bg-gray-200'
                                             }`}
                                         disabled={!video.vehicleDetails?.reserveLink}
                                     >

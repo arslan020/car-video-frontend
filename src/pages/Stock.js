@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
-import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers, FaEllipsisV, FaExternalLinkAlt, FaPaperPlane, FaTrash } from 'react-icons/fa';
+import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers, FaEllipsisV, FaExternalLinkAlt, FaPaperPlane } from 'react-icons/fa';
 import API_URL from '../config';
 
 const Stock = () => {
@@ -82,27 +82,11 @@ const Stock = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
             const { data } = await axios.get(`${API_URL}/api/videos`, config);
-            console.log('Fetched videos:', data.length, data);
             setVideos(data);
         } catch (error) {
             console.error('Failed to fetch videos', error);
         }
     }, [user.token]);
-
-    const handleDeleteVideo = async (videoId) => {
-        if (!window.confirm('Are you sure you want to delete this video?')) return;
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`${API_URL}/api/videos/${videoId}`, config);
-            // Refresh videos list
-            fetchVideos();
-            setActiveMenu(null);
-            alert('Video deleted successfully');
-        } catch (error) {
-            console.error('Failed to delete video', error);
-            alert(error.response?.data?.message || 'Failed to delete video');
-        }
-    };
 
     useEffect(() => {
         fetchStock();
@@ -110,17 +94,9 @@ const Stock = () => {
     }, [fetchStock, fetchVideos]);
 
     const getMatchingVideos = (stockItem) => {
-        const itemReg = (stockItem.vehicle.registration || '').replace(/\s+/g, '').toUpperCase();
-        if (!itemReg) return [];
-
         return videos.filter(video => {
-            // Check direct registration field
-            const videoReg = (video.registration || '').replace(/\s+/g, '').toUpperCase();
-            if (videoReg) return videoReg === itemReg;
-
-            // Check inside vehicleDetails
-            const detailsReg = (video.vehicleDetails?.registration || '').replace(/\s+/g, '').toUpperCase();
-            return detailsReg === itemReg;
+            const title = video.title || '';
+            return title.includes(stockItem.vehicle.registration);
         });
     };
 
@@ -488,7 +464,7 @@ const Stock = () => {
                                         return (
                                             <tr
                                                 key={item.id}
-                                                className={`hover:bg-gray-50 transition relative ${videoExists ? 'bg-green-50' : ''}`}
+                                                className="hover:bg-gray-50 transition relative"
                                             >
                                                 {/* Vehicle Image & Name */}
                                                 <td className="px-6 py-4">
@@ -566,7 +542,18 @@ const Stock = () => {
                                                                         className="fixed w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1 animate-fade-in origin-top-right"
                                                                         style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
                                                                     >
-                                                                        {/* Removed Upload Another Option as requested by user */}
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setSelectedStockItem(item);
+                                                                                setDirectUploadOpen(true);
+                                                                                setSelectedFile(null);
+                                                                                setUploadError('');
+                                                                                setActiveMenu(null);
+                                                                            }}
+                                                                            className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md flex items-center gap-2 transition font-medium"
+                                                                        >
+                                                                            <FaCloudUploadAlt size={14} /> Upload Another
+                                                                        </button>
 
                                                                         {matchingVideos.map((vid, idx) => (
                                                                             <div key={vid._id} className="border-t border-gray-50 mt-1 pt-1">
@@ -600,12 +587,6 @@ const Stock = () => {
                                                                                     className="w-full text-left px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 rounded-md flex items-center gap-2 transition"
                                                                                 >
                                                                                     <FaPaperPlane size={14} className="text-purple-500/70" /> Send to Customer
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleDeleteVideo(vid._id)}
-                                                                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center gap-2 transition"
-                                                                                >
-                                                                                    <FaTrash size={14} className="text-red-500/70" /> Delete Video
                                                                                 </button>
                                                                             </div>
                                                                         ))}
@@ -1122,8 +1103,6 @@ const Stock = () => {
                     </div>
                 </div>
             )}
-            {/* Debug Section - Temporary */}
-            {/* Removed */}
         </DashboardLayout>
     );
 };
