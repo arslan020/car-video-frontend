@@ -74,11 +74,23 @@ const AdminStock = () => {
     }, [fetchStock, fetchVideos]);
 
     // Helper to find matching videos
+    // Helper to find matching videos
     const getMatchingVideos = (stockItem) => {
+        const itemReg = (stockItem.vehicle.registration || '').replace(/\s+/g, '').toUpperCase();
+        if (!itemReg) return [];
+
         return videos.filter(video => {
-            const title = video.title || '';
-            const reg = stockItem.vehicle.registration || '';
-            return title.toUpperCase().includes(reg.toUpperCase());
+            // Check direct registration field
+            const videoReg = (video.registration || '').replace(/\s+/g, '').toUpperCase();
+            if (videoReg) return videoReg === itemReg;
+
+            // Check inside vehicleDetails
+            const detailsReg = (video.vehicleDetails?.registration || '').replace(/\s+/g, '').toUpperCase();
+            if (detailsReg) return detailsReg === itemReg;
+
+            // Fallback to title
+            const title = (video.title || '').replace(/\s+/g, '').toUpperCase();
+            return title.includes(itemReg);
         });
     };
 

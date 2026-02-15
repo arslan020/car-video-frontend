@@ -110,12 +110,21 @@ const Stock = () => {
     }, [fetchStock, fetchVideos]);
 
     const getMatchingVideos = (stockItem) => {
-        if (!stockItem.vehicle.registration) return [];
-        const cleanReg = stockItem.vehicle.registration.replace(/\s+/g, '').toUpperCase();
+        const itemReg = (stockItem.vehicle.registration || '').replace(/\s+/g, '').toUpperCase();
+        if (!itemReg) return [];
 
         return videos.filter(video => {
+            // Check direct registration field
+            const videoReg = (video.registration || '').replace(/\s+/g, '').toUpperCase();
+            if (videoReg) return videoReg === itemReg;
+
+            // Check inside vehicleDetails
+            const detailsReg = (video.vehicleDetails?.registration || '').replace(/\s+/g, '').toUpperCase();
+            if (detailsReg) return detailsReg === itemReg;
+
+            // Fallback to title (only if registration fields are missing)
             const title = (video.title || '').replace(/\s+/g, '').toUpperCase();
-            return title.includes(cleanReg);
+            return title.includes(itemReg);
         });
     };
 
