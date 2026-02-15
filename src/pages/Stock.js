@@ -120,11 +120,7 @@ const Stock = () => {
 
             // Check inside vehicleDetails
             const detailsReg = (video.vehicleDetails?.registration || '').replace(/\s+/g, '').toUpperCase();
-            if (detailsReg) return detailsReg === itemReg;
-
-            // Fallback to title (only if registration fields are missing)
-            const title = (video.title || '').replace(/\s+/g, '').toUpperCase();
-            return title.includes(itemReg);
+            return detailsReg === itemReg;
         });
     };
 
