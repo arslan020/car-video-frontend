@@ -240,8 +240,10 @@ const AdminStock = () => {
                                             // Image handling
                                             const imageUrl = item.media?.images?.[0]?.href || item.media?.images?.[0]?.url;
 
+                                            const uploaderName = matchingVideos[0]?.uploadedBy?.name || matchingVideos[0]?.uploadedBy?.username;
+
                                             return (
-                                                <tr key={item.id} className="hover:bg-gray-50 transition relative">
+                                                <tr key={item.id} className={`transition relative ${videoExists ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'}`}>
                                                     {/* Vehicle Image & Name */}
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-4">
@@ -289,8 +291,8 @@ const AdminStock = () => {
                                                         <button
                                                             onClick={() => handleOpenReserveModal(item)}
                                                             className={`text-xs px-3 py-1.5 rounded-md font-medium transition ${item.vehicle.reserveLink
-                                                                    ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
-                                                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200'
+                                                                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                                                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200'
                                                                 }`}
                                                         >
                                                             {item.vehicle.reserveLink ? 'Edit Link' : '+ Add Link'}
@@ -311,10 +313,17 @@ const AdminStock = () => {
                                                     {/* Status */}
                                                     <td className="px-6 py-4">
                                                         {videoExists ? (
-                                                            <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                                {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
-                                                            </span>
+                                                            <div className="flex flex-col items-start gap-1">
+                                                                <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                    {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
+                                                                </span>
+                                                                {uploaderName && (
+                                                                    <span className="text-xs text-gray-500">
+                                                                        Uploaded by <span className="font-medium text-gray-700">{uploaderName}</span>
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-400">
                                                                 <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
