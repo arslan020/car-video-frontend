@@ -125,6 +125,46 @@ const AdminStock = () => {
         }
     };
 
+    // Reserve Link Modal
+    const [reserveModalOpen, setReserveModalOpen] = useState(false);
+    const [reserveLink, setReserveLink] = useState('');
+    const [selectedVehicleForReserve, setSelectedVehicleForReserve] = useState(null);
+    const [savingReserve, setSavingReserve] = useState(false);
+
+    const handleOpenReserveModal = (item) => {
+        setSelectedVehicleForReserve(item);
+        setReserveLink(item.vehicle.reserveLink || '');
+        setReserveModalOpen(true);
+    };
+
+    const handleSaveReserveLink = async () => {
+        setSavingReserve(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.post(`${API_URL}/api/autotrader/reserve-link`, {
+                registration: selectedVehicleForReserve.vehicle.registration,
+                reserveLink: reserveLink
+            }, config);
+
+            // Update local state to reflect change immediately
+            const updatedStock = stock.map(s => {
+                if (s.vehicle.registration === selectedVehicleForReserve.vehicle.registration) {
+                    return { ...s, vehicle: { ...s.vehicle, reserveLink: reserveLink } };
+                }
+                return s;
+            });
+            setStock(updatedStock);
+
+            setReserveModalOpen(false);
+            alert('Reserve link updated!');
+        } catch (error) {
+            console.error('Failed to update reserve link', error);
+            alert('Failed to save reserve link.');
+        } finally {
+            setSavingReserve(false);
+        }
+    };
+
     return (
         <DashboardLayout>
             <div className="w-full px-6 pb-12">
@@ -182,10 +222,11 @@ const AdminStock = () => {
                     ) : (
                         <div className="overflow-x-auto lg:overflow-visible">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0">
+                                <thead className="bg-white text-gray-500 text-xs uppercase font-semibold sticky top-0 z-10 shadow-sm">
                                     <tr>
                                         <th className="px-6 py-4">Vehicle</th>
                                         <th className="px-6 py-4">Details</th>
+                                        <th className="px-6 py-4">Reserve Link</th>
                                         <th className="px-6 py-4">Status</th>
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
@@ -241,6 +282,30 @@ const AdminStock = () => {
                                                                 </span>
                                                             </div>
                                                         </div>
+                                                    </td>
+
+                                                    {/* Reserve Link Column */}
+                                                    <td className="px-6 py-4">
+                                                        <button
+                                                            onClick={() => handleOpenReserveModal(item)}
+                                                            className={`text-xs px-3 py-1.5 rounded-md font-medium transition ${item.vehicle.reserveLink
+                                                                    ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                                                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200'
+                                                                }`}
+                                                        >
+                                                            {item.vehicle.reserveLink ? 'Edit Link' : '+ Add Link'}
+                                                        </button>
+                                                        {item.vehicle.reserveLink && (
+                                                            <a
+                                                                href={item.vehicle.reserveLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="block mt-1 text-[10px] text-gray-400 truncate max-w-[100px] hover:text-blue-500 hover:underline"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                View Link
+                                                            </a>
+                                                        )}
                                                     </td>
 
                                                     {/* Status */}
@@ -327,7 +392,7 @@ const AdminStock = () => {
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                                                 No stock found matching your filters.
                                             </td>
                                         </tr>
@@ -445,6 +510,47 @@ const AdminStock = () => {
                                     className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition shadow-lg shadow-purple-200 disabled:opacity-50"
                                 >
                                     {sending ? 'Sending...' : 'Send Link'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reserve Link Edit Modal */}
+            {reserveModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-xl font-bold text-gray-800">Edit Reserve Link</h3>
+                            <button onClick={() => setReserveModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
+                                ×
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Reservation URL</label>
+                                <input
+                                    type="url"
+                                    value={reserveLink}
+                                    onChange={(e) => setReserveLink(e.target.value)}
+                                    placeholder="https://"
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={() => setReserveModalOpen(false)}
+                                    className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveReserveLink}
+                                    disabled={savingReserve}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+                                >
+                                    {savingReserve ? 'Saving...' : 'Save'}
                                 </button>
                             </div>
                         </div>

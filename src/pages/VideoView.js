@@ -269,8 +269,18 @@ const VideoView = () => {
                                     </button>
 
                                     <button
-                                        onClick={() => alert('Reserve Car feature coming soon!')}
-                                        className="flex flex-col items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-4 rounded-lg font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
+                                        onClick={() => {
+                                            if (video.vehicleDetails?.reserveLink) {
+                                                window.open(video.vehicleDetails.reserveLink, '_blank');
+                                            } else {
+                                                alert('Reserve link not available yet.');
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-lg font-semibold transition-colors shadow-sm ${video.vehicleDetails?.reserveLink
+                                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed hover:bg-gray-200'
+                                            }`}
+                                        disabled={!video.vehicleDetails?.reserveLink}
                                     >
                                         <span className="text-xl">🔒</span>
                                         <span>Reserve Car</span>

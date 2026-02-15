@@ -447,7 +447,7 @@ const Stock = () => {
                     ) : (
                         <div className="overflow-x-auto lg:overflow-visible">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0">
+                                <thead className="bg-white text-gray-500 text-xs uppercase font-semibold sticky top-0 z-10 shadow-sm">
                                     <tr>
                                         <th className="px-6 py-4">Vehicle</th>
                                         <th className="px-6 py-4">Details</th>
