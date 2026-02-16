@@ -94,10 +94,29 @@ const Stock = () => {
     }, [fetchStock, fetchVideos]);
 
     const getMatchingVideos = (stockItem) => {
-        return videos.filter(video => {
-            const title = video.title || '';
-            return title.includes(stockItem.vehicle.registration);
+        const matches = videos.filter(video => {
+            const stockReg = (stockItem.vehicle.registration || '').replace(/\s/g, '').toUpperCase();
+
+            // Safety check: if stock car has no registration, it shouldn't match anything
+            if (!stockReg) {
+                return false;
+            }
+
+            // 1. Try exact registration match (if video has registration field)
+            if (video.registration) {
+                const videoReg = (video.registration || '').replace(/\s/g, '').toUpperCase();
+                const isMatch = videoReg === stockReg;
+                return isMatch;
+            }
+
+            // 2. Fallback to title match
+            const title = (video.title || '').replace(/\s/g, '').toUpperCase();
+            const isMatch = title.includes(stockReg);
+
+            return isMatch;
         });
+
+        return matches;
     };
 
     const copyToClipboard = (videoId) => {
@@ -456,15 +475,24 @@ const Stock = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredStock.length > 0 ? filteredStock.map((item) => {
+                                    {filteredStock.length > 0 ? filteredStock.map((item, index) => {
+                                        // Debug logging for IDs
+                                        if (item.id) {
+                                            //console.log(`Row: ${item.vehicle.registration} | ID: ${item.id}`);
+                                        }
+
+                                        const uniqueId = `${item.id}-${index}`;
                                         const matchingVideos = getMatchingVideos(item);
                                         const videoExists = matchingVideos.length > 0;
                                         const imageUrl = item.media?.images?.[0]?.href || item.media?.images?.[0]?.url;
 
                                         return (
                                             <tr
-                                                key={item.id}
-                                                className="hover:bg-gray-50 transition relative"
+                                                key={uniqueId}
+                                                className={`transition relative ${videoExists
+                                                        ? 'bg-emerald-50 hover:bg-emerald-100'
+                                                        : 'hover:bg-gray-50'
+                                                    }`}
                                             >
                                                 {/* Vehicle Image & Name */}
                                                 <td className="px-6 py-4">
@@ -528,19 +556,19 @@ const Stock = () => {
                                                     {videoExists ? (
                                                         <div className="relative inline-block">
                                                             <button
-                                                                onClick={(e) => handleActionClick(e, item.id)}
-                                                                className={`p-2 rounded-full transition ${activeMenu === item.id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                                onClick={(e) => handleActionClick(e, uniqueId)}
+                                                                className={`p-2 rounded-full transition ${activeMenu === uniqueId ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
                                                             >
                                                                 <FaEllipsisV />
                                                             </button>
 
                                                             {/* Dropdown Menu */}
-                                                            {activeMenu === item.id && (
+                                                            {activeMenu === uniqueId && (
                                                                 <>
                                                                     <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)}></div>
                                                                     <div
-                                                                        className="fixed w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1 animate-fade-in origin-top-right"
-                                                                        style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
+                                                                        className="absolute w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1 animate-fade-in origin-top-right"
+                                                                        style={{ top: '100%', right: 0, marginTop: '5px' }}
                                                                     >
                                                                         <button
                                                                             onClick={() => {

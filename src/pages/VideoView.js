@@ -269,7 +269,13 @@ const VideoView = () => {
                                     </button>
 
                                     <button
-                                        onClick={() => alert('Reserve Car feature coming soon!')}
+                                        onClick={() => {
+                                            if (video.reserveCarLink) {
+                                                window.open(video.reserveCarLink, '_blank');
+                                            } else {
+                                                alert('Reserve link not available for this vehicle. Please contact us directly.');
+                                            }
+                                        }}
                                         className="flex flex-col items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-4 rounded-lg font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
                                     >
                                         <span className="text-xl">🔒</span>

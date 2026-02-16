@@ -11,6 +11,7 @@ import API_URL from '../config';
 const AdminStock = () => {
     const [stock, setStock] = useState([]);
     const [videos, setVideos] = useState([]);
+    const [vehicleMetadata, setVehicleMetadata] = useState({});
     const [loading, setLoading] = useState(false);
 
     // UI States
@@ -28,6 +29,11 @@ const AdminStock = () => {
     const [sendEmail, setSendEmail] = useState('');
     const [sendMobile, setSendMobile] = useState('');
     const [sending, setSending] = useState(false);
+
+    // Reserve Link Modal States
+    const [reserveLinkModalOpen, setReserveLinkModalOpen] = useState(false);
+    const [reserveLink, setReserveLink] = useState('');
+    const [savingReserveLink, setSavingReserveLink] = useState(false);
 
     const { user } = useContext(AuthContext);
     const [syncStatus, setSyncStatus] = useState({ type: '', message: '' });
@@ -68,6 +74,17 @@ const AdminStock = () => {
         }
     }, [user.token]);
 
+    const fetchVehicleMetadata = useCallback(async (registration) => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const { data } = await axios.get(`${API_URL}/api/vehicle-metadata/${registration}`, config);
+            return data;
+        } catch (error) {
+            console.error('Failed to fetch vehicle metadata', error);
+            return { registration, reserveLink: '' };
+        }
+    }, [user.token]);
+
     useEffect(() => {
         fetchStock();
         fetchVideos();
@@ -75,11 +92,29 @@ const AdminStock = () => {
 
     // Helper to find matching videos
     const getMatchingVideos = (stockItem) => {
-        return videos.filter(video => {
-            const title = video.title || '';
-            const reg = stockItem.vehicle.registration || '';
-            return title.toUpperCase().includes(reg.toUpperCase());
+        const matches = videos.filter(video => {
+            const stockReg = (stockItem.vehicle.registration || '').replace(/\s/g, '').toUpperCase();
+
+            // Safety check: if stock car has no registration, it shouldn't match anything
+            if (!stockReg) {
+                return false;
+            }
+
+            // 1. Try exact registration match (if video has registration field)
+            if (video.registration) {
+                const videoReg = (video.registration || '').replace(/\s/g, '').toUpperCase();
+                const isMatch = videoReg === stockReg;
+                return isMatch;
+            }
+
+            // 2. Fallback to title match (but stricter)
+            const title = (video.title || '').toUpperCase().replace(/\s/g, '');
+            const isMatch = title.includes(stockReg);
+
+            return isMatch;
         });
+
+        return matches;
     };
 
     // Filter Logic
@@ -122,6 +157,36 @@ const AdminStock = () => {
                 right: window.innerWidth - rect.right
             });
             setActiveMenu(itemId);
+        }
+    };
+
+    const handleSaveReserveLink = async () => {
+        if (!selectedVideo) return;
+        setSavingReserveLink(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const registration = selectedVideo.registration || selectedVideo.vehicle?.registration;
+
+            await axios.patch(
+                `${API_URL}/api/vehicle-metadata/${registration}/reserve-link`,
+                { reserveLink: reserveLink },
+                config
+            );
+
+            alert('Reserve link saved successfully!');
+            setReserveLinkModalOpen(false);
+            setReserveLink('');
+            setSelectedVideo(null);
+
+            // Update local metadata cache
+            setVehicleMetadata(prev => ({
+                ...prev,
+                [registration]: { registration, reserveLink }
+            }));
+        } catch (error) {
+            alert('Failed to save reserve link.');
+        } finally {
+            setSavingReserveLink(false);
         }
     };
 
@@ -182,17 +247,19 @@ const AdminStock = () => {
                     ) : (
                         <div className="overflow-x-auto lg:overflow-visible">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0">
+                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-6 py-4">Vehicle</th>
-                                        <th className="px-6 py-4">Details</th>
-                                        <th className="px-6 py-4">Status</th>
-                                        <th className="px-6 py-4 text-right">Actions</th>
+                                        <th className="px-6 py-4 bg-gray-50">Vehicle</th>
+                                        <th className="px-6 py-4 bg-gray-50">Details</th>
+                                        <th className="px-6 py-4 bg-gray-50">Reserve Link</th>
+                                        <th className="px-6 py-4 bg-gray-50">Status</th>
+                                        <th className="px-6 py-4 text-right bg-gray-50">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {filteredStock.length > 0 ? (
-                                        filteredStock.map((item) => {
+                                        filteredStock.map((item, index) => {
+                                            const uniqueId = `${item.id}-${index}`;
                                             const matchingVideos = getMatchingVideos(item);
                                             const videoExists = matchingVideos.length > 0;
 
@@ -200,7 +267,10 @@ const AdminStock = () => {
                                             const imageUrl = item.media?.images?.[0]?.href || item.media?.images?.[0]?.url;
 
                                             return (
-                                                <tr key={item.id} className="hover:bg-gray-50 transition relative">
+                                                <tr key={uniqueId} className={`transition relative ${videoExists
+                                                    ? 'bg-emerald-50 hover:bg-emerald-100'
+                                                    : 'hover:bg-gray-50'
+                                                    }`}>
                                                     {/* Vehicle Image & Name */}
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-4">
@@ -243,13 +313,45 @@ const AdminStock = () => {
                                                         </div>
                                                     </td>
 
+                                                    {/* Reserve Link */}
+                                                    <td className="px-6 py-4">
+                                                        <button
+                                                            onClick={async () => {
+                                                                const registration = item.vehicle.registration;
+                                                                let metadata = vehicleMetadata[registration];
+
+                                                                if (!metadata) {
+                                                                    metadata = await fetchVehicleMetadata(registration);
+                                                                    setVehicleMetadata(prev => ({ ...prev, [registration]: metadata }));
+                                                                }
+
+                                                                setSelectedVideo({ ...item, registration });
+                                                                setReserveLink(metadata.reserveLink || '');
+                                                                setReserveLinkModalOpen(true);
+                                                            }}
+                                                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition ${vehicleMetadata[item.vehicle.registration]?.reserveLink
+                                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                                : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
+                                                                }`}
+                                                        >
+                                                            🔒 {vehicleMetadata[item.vehicle.registration]?.reserveLink ? 'Edit Link' : 'Add Link'}
+                                                        </button>
+                                                    </td>
+
                                                     {/* Status */}
                                                     <td className="px-6 py-4">
                                                         {videoExists ? (
-                                                            <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                                {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
-                                                            </span>
+                                                            <div className="space-y-1">
+                                                                <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                    {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
+                                                                </span>
+                                                                {matchingVideos[0]?.uploadedBy && (
+                                                                    <p className="text-xs text-gray-500">
+                                                                        by {matchingVideos[0].uploadedBy.name || matchingVideos[0].uploadedBy.username}
+                                                                    </p>
+                                                                )}
+                                                            </div>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-400">
                                                                 <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
@@ -264,19 +366,19 @@ const AdminStock = () => {
                                                             {videoExists ? (
                                                                 <>
                                                                     <button
-                                                                        onClick={(e) => handleActionClick(e, item.id)}
-                                                                        className={`p-2 rounded-full transition ${activeMenu === item.id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                                        onClick={(e) => handleActionClick(e, uniqueId)}
+                                                                        className={`p-2 rounded-full transition ${activeMenu === uniqueId ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
                                                                     >
                                                                         <FaEllipsisV />
                                                                     </button>
 
                                                                     {/* Dropdown Menu */}
-                                                                    {activeMenu === item.id && (
+                                                                    {activeMenu === uniqueId && (
                                                                         <>
                                                                             <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)}></div>
                                                                             <div
-                                                                                className="fixed w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1 animate-fade-in origin-top-right"
-                                                                                style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
+                                                                                className="absolute w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1 animate-fade-in origin-top-right"
+                                                                                style={{ top: '100%', right: 0, marginTop: '5px' }}
                                                                             >
                                                                                 {matchingVideos.map((vid, idx) => (
                                                                                     <div key={vid._id}>
@@ -327,7 +429,7 @@ const AdminStock = () => {
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                                                 No stock found matching your filters.
                                             </td>
                                         </tr>
@@ -445,6 +547,61 @@ const AdminStock = () => {
                                     className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition shadow-lg shadow-purple-200 disabled:opacity-50"
                                 >
                                     {sending ? 'Sending...' : 'Send Link'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reserve Link Modal */}
+            {reserveLinkModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-emerald-50">
+                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                🔒 {selectedVideo?.reserveCarLink ? 'Edit' : 'Add'} Reserve Car Link
+                            </h3>
+                            <button onClick={() => setReserveLinkModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle</label>
+                                <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                                    {selectedVideo?.vehicle?.make} {selectedVideo?.vehicle?.model} - {selectedVideo?.registration}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Reserve Car Link URL</label>
+                                <input
+                                    type="url"
+                                    value={reserveLink}
+                                    onChange={(e) => setReserveLink(e.target.value)}
+                                    placeholder="https://example.com/reserve"
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    When customers click "Reserve Car", they'll be redirected to this URL.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={() => setReserveLinkModalOpen(false)}
+                                    className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveReserveLink}
+                                    disabled={savingReserveLink}
+                                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition shadow-lg shadow-emerald-200 disabled:opacity-50"
+                                >
+                                    {savingReserveLink ? 'Saving...' : 'Save Link'}
                                 </button>
                             </div>
                         </div>
