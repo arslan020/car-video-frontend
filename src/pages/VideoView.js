@@ -316,7 +316,7 @@ const VideoView = () => {
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 animate-fadeIn">
                                     <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center justify-between">
                                         Vehicle Specs
-                                        <span className="text-[10px] font-normal text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100">Verified by AutoTrader</span>
+
                                     </h3>
 
                                     <div className="space-y-4">
