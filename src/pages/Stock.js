@@ -145,6 +145,9 @@ const Stock = () => {
         setTimeout(() => setCopiedId(null), 2000);
     };
 
+    const [smartMileage, setSmartMileage] = useState('');
+    const [smartReserveLink, setSmartReserveLink] = useState('');
+
     // --- Smart Upload Handlers ---
 
     const openSmartUpload = () => {
@@ -166,6 +169,8 @@ const Stock = () => {
         setUploadError('');
         setUploadProgress(0);
         setLookupLoading(false);
+        setSmartMileage('');
+        setSmartReserveLink('');
     };
 
     const handleLookup = async (e) => {
@@ -223,6 +228,10 @@ const Stock = () => {
                 };
 
                 setFetchedVehicle(normalizedVehicle);
+                // Pre-fill mileage if available
+                if (normalizedVehicle.odometerReadingMiles) {
+                    setSmartMileage(normalizedVehicle.odometerReadingMiles);
+                }
             } else {
                 setLookupError('Vehicle not found');
             }
@@ -252,6 +261,8 @@ const Stock = () => {
             formData.append('model', fetchedVehicle.model);
             formData.append('registration', fetchedVehicle.registration);
             formData.append('vehicleDetails', JSON.stringify(fetchedVehicle));
+            formData.append('mileage', smartMileage);
+            formData.append('reserveCarLink', smartReserveLink);
 
             const config = {
                 headers: {
@@ -795,6 +806,29 @@ const Stock = () => {
                                                     : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
                                                     }`}
                                             >
+                                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                                    <div>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Mileage</label>
+                                                        <input
+                                                            type="number"
+                                                            value={smartMileage}
+                                                            onChange={(e) => setSmartMileage(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            placeholder="e.g. 45000"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Reserve Car Link</label>
+                                                        <input
+                                                            type="url"
+                                                            value={smartReserveLink}
+                                                            onChange={(e) => setSmartReserveLink(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            placeholder="https://..."
+                                                        />
+                                                    </div>
+                                                </div>
+
                                                 <input
                                                     ref={fileInputRef}
                                                     type="file"

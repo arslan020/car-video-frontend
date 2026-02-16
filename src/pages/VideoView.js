@@ -45,7 +45,9 @@ const VideoView = () => {
                 setVideo(data);
 
                 // Fetch reserve link from vehicle metadata
-                if (data.registration) {
+                if (data.reserveCarLink) {
+                    setReserveLink(data.reserveCarLink);
+                } else if (data.registration) {
                     try {
                         const metadataResponse = await axios.get(`${API_URL}/api/vehicle-metadata/${data.registration}`);
                         setReserveLink(metadataResponse.data.reserveLink || '');
@@ -401,8 +403,8 @@ const VideoView = () => {
                                         <div>
                                             <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Mileage</p>
                                             <p className="font-medium text-gray-900 text-sm">
-                                                {(video.vehicleDetails.mileage || video.vehicleDetails.odometerReadingMiles)
-                                                    ? `${(video.vehicleDetails.mileage || video.vehicleDetails.odometerReadingMiles).toLocaleString()} miles`
+                                                {(video.mileage || video.vehicleDetails?.mileage || video.vehicleDetails?.odometerReadingMiles)
+                                                    ? `${(video.mileage || video.vehicleDetails?.mileage || video.vehicleDetails?.odometerReadingMiles).toLocaleString()} miles`
                                                     : '-'}
                                             </p>
                                         </div>
