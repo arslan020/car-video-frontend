@@ -27,28 +27,10 @@ const MyVideos = () => {
         fetchVideos();
     }, [fetchVideos]);
 
-    const copyLink = async (id) => {
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.post(`${API_URL}/api/magic-links/generate`, { videoId: id }, config);
-
-            navigator.clipboard.writeText(data.url);
-            alert('Magic link (valid for 4 days) copied to clipboard!');
-        } catch (error) {
-            console.error('Failed to generate magic link:', error);
-            alert('Failed to generate link.');
-        }
-    };
-
-    const handleOpen = async (id) => {
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.post(`${API_URL}/api/magic-links/generate`, { videoId: id }, config);
-            window.open(data.url, '_blank');
-        } catch (error) {
-            console.error('Failed to generate magic link:', error);
-            alert('Failed to open link.');
-        }
+    const copyLink = (id) => {
+        const link = `${window.location.origin}/view/${id}`;
+        navigator.clipboard.writeText(link);
+        alert('Link copied to clipboard!');
     };
 
     const handleDelete = async (id) => {
@@ -161,7 +143,7 @@ const MyVideos = () => {
                                             Copy
                                         </button>
                                         <button
-                                            onClick={() => handleOpen(video._id)}
+                                            onClick={() => window.open(`${window.location.origin}/view/${video._id}`, '_blank')}
                                             className="flex-1 bg-green-50 text-green-600 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors font-medium text-sm flex items-center justify-center gap-1.5"
                                         >
                                             <FaExternalLinkAlt size={12} />

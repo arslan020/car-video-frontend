@@ -135,19 +135,15 @@ const AdminStock = () => {
         return matchesSearch && matchesFilter;
     });
 
-    const copyToClipboard = async (videoId) => {
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.post(`${API_URL}/api/magic-links/generate`, { videoId }, config);
-
-            navigator.clipboard.writeText(data.url);
-            setCopiedId(videoId);
-            setTimeout(() => setCopiedId(null), 2000);
-            setActiveMenu(null);
-        } catch (error) {
-            console.error('Failed to generate magic link:', error);
-            alert('Failed to generate link. Please try again.');
-        }
+    const copyToClipboard = (videoId) => {
+        const video = videos.find(v => v._id === videoId);
+        // If Admin, use 'Eesa Nasim', otherwise Sender Name, fallback to uploader
+        const refName = user.role === 'admin' ? 'Eesa Nasim' : (user.name || user.username || video?.uploadedBy?.name || video?.uploadedBy?.username);
+        const link = `${window.location.origin}/view/${videoId}?ref=${encodeURIComponent(refName)}`;
+        navigator.clipboard.writeText(link);
+        setCopiedId(videoId);
+        setTimeout(() => setCopiedId(null), 2000);
+        setActiveMenu(null);
     };
 
     const handleActionClick = (e, itemId) => {
@@ -556,22 +552,18 @@ const AdminStock = () => {
                                         if (!customerName || !sendEmail) return;
                                         setSending(true);
                                         try {
+                                            // If Admin, use 'Eesa Nasim', otherwise Sender Name, fallback to uploader
+                                            const refName = user.role === 'admin' ? 'Eesa Nasim' : (user.name || user.username || selectedVideo?.uploadedBy?.name || selectedVideo?.uploadedBy?.username);
+                                            const videoLink = `${window.location.origin}/view/${selectedVideo._id}?ref=${encodeURIComponent(refName)}`;
                                             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-
-                                            // Generate Magic Link
-                                            const { data: magicLinkData } = await axios.post(`${API_URL}/api/magic-links/generate`, {
-                                                videoId: selectedVideo._id
-                                            }, config);
-
                                             await axios.post(`${API_URL}/api/send-link`, {
                                                 email: sendEmail,
                                                 mobile: sendMobile,
-                                                videoLink: magicLinkData.url,
+                                                videoLink,
                                                 vehicleDetails: selectedVideo.vehicleDetails,
                                                 customerName,
                                                 customerTitle
                                             }, config);
-
                                             alert('Video link sent successfully!');
                                             setSendModalOpen(false);
                                         } catch (error) {
