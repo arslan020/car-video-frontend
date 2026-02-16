@@ -4,7 +4,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import {
     FaCar, FaCopy, FaCheck, FaExternalLinkAlt, FaPaperPlane, FaSearch,
-    FaEllipsisV, FaVideo, FaVideoSlash
+    FaEllipsisV, FaVideo, FaVideoSlash, FaTrash
 } from 'react-icons/fa';
 import API_URL from '../config';
 
@@ -187,6 +187,29 @@ const AdminStock = () => {
             alert('Failed to save reserve link.');
         } finally {
             setSavingReserveLink(false);
+        }
+    };
+
+    const handleDeleteVideo = async (videoId) => {
+        if (!window.confirm('Are you sure you want to delete this video? This cannot be undone.')) return;
+
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(`${API_URL}/api/videos/${videoId}`, config);
+
+            // Update local state
+            setVideos(videos.filter(v => v._id !== videoId));
+
+            // If the deleted video was selected, clear selection
+            if (selectedVideo?._id === videoId) {
+                setSelectedVideo(null);
+            }
+
+            alert('Video deleted successfully');
+            setActiveMenu(null);
+        } catch (error) {
+            console.error('Delete video error:', error);
+            alert(error.response?.data?.message || 'Failed to delete video');
         }
     };
 
@@ -412,6 +435,12 @@ const AdminStock = () => {
                                                                                             className="w-full text-left px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 rounded-md flex items-center gap-2 transition"
                                                                                         >
                                                                                             <FaPaperPlane size={14} className="text-purple-500/70" /> Send to Customer
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => handleDeleteVideo(vid._id)}
+                                                                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center gap-2 transition"
+                                                                                        >
+                                                                                            <FaTrash size={14} className="text-red-500/70" /> Delete Video
                                                                                         </button>
                                                                                     </div>
                                                                                 ))}

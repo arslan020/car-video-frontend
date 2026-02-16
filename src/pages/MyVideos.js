@@ -149,15 +149,13 @@ const MyVideos = () => {
                                             <FaExternalLinkAlt size={12} />
                                             Open
                                         </button>
-                                        {user?.role === 'admin' && (
-                                            <button
-                                                onClick={() => handleDelete(video._id)}
-                                                className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center"
-                                                title="Delete Video"
-                                            >
-                                                <FaTrash size={14} />
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() => handleDelete(video._id)}
+                                            className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center"
+                                            title="Delete Video"
+                                        >
+                                            <FaTrash size={14} />
+                                        </button>
                                     </div>
                                 </div>
                             </div>
