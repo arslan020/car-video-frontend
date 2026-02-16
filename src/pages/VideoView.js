@@ -29,6 +29,9 @@ const VideoView = () => {
     const [callRequestData, setCallRequestData] = useState({ name: '', phone: '' });
     const [callLoading, setCallLoading] = useState(false);
 
+    // Reserve Link State
+    const [reserveLink, setReserveLink] = useState('');
+
     // Helper to format registration (simple spacing)
     const formattedReg = (reg) => {
         if (!reg) return '';
@@ -40,6 +43,16 @@ const VideoView = () => {
             try {
                 const { data } = await axios.get(`${API_URL}/api/videos/${id}`);
                 setVideo(data);
+
+                // Fetch reserve link from vehicle metadata
+                if (data.registration) {
+                    try {
+                        const metadataResponse = await axios.get(`${API_URL}/api/vehicle-metadata/${data.registration}`);
+                        setReserveLink(metadataResponse.data.reserveLink || '');
+                    } catch (err) {
+                        console.log('No metadata found for vehicle');
+                    }
+                }
             } catch (err) {
                 setError(true);
             } finally {
@@ -270,8 +283,8 @@ const VideoView = () => {
 
                                     <button
                                         onClick={() => {
-                                            if (video.reserveCarLink) {
-                                                window.open(video.reserveCarLink, '_blank');
+                                            if (reserveLink) {
+                                                window.open(reserveLink, '_blank');
                                             } else {
                                                 alert('Reserve link not available for this vehicle. Please contact us directly.');
                                             }
