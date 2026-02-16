@@ -1,4 +1,4 @@
-import { FaHome, FaVideo, FaCar, FaCog, FaUser, FaUsersCog, FaUserShield, FaSearch } from 'react-icons/fa';
+import { FaHome, FaVideo, FaCar, FaCog, FaUser, FaUsersCog, FaUserShield, FaSearch, FaHistory } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const Sidebar = ({ user }) => {
@@ -12,6 +12,7 @@ const Sidebar = ({ user }) => {
         { icon: FaCar, label: 'Browse Vehicles', path: '/admin/stock' },
         { icon: FaVideo, label: 'Uploaded Videos', path: '/staff/videos' },
         { icon: FaUsersCog, label: 'Manage Staff', path: '/admin/staff' },
+        { icon: FaHistory, label: 'Activity Logs', path: '/admin/activity-logs' },
         { icon: FaCog, label: 'Settings', path: '/admin/settings' },
     ];
 

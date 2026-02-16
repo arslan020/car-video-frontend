@@ -4,6 +4,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ManageStaff from './pages/ManageStaff';
 import AdminStock from './pages/AdminStock';
 import AdminSettings from './pages/AdminSettings';
+import ActivityLogs from './pages/ActivityLogs';
 import StaffDashboard from './pages/StaffDashboard';
 import Stock from './pages/Stock';
 import UploadVideo from './pages/UploadVideo';
@@ -29,6 +30,14 @@ function App() {
                         element={
                             <ProtectedRoute role="admin">
                                 <AdminDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/activity-logs"
+                        element={
+                            <ProtectedRoute role="admin">
+                                <ActivityLogs />
                             </ProtectedRoute>
                         }
                     />
