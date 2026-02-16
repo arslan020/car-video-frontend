@@ -555,10 +555,17 @@ const Stock = () => {
                                                 {/* Status */}
                                                 <td className="px-6 py-4">
                                                     {videoExists ? (
-                                                        <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                            {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
-                                                        </span>
+                                                        <div className="flex flex-col">
+                                                            <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
+                                                            </span>
+                                                            {matchingVideos[0]?.uploadedBy && (
+                                                                <span className="text-xs text-gray-500 mt-1">
+                                                                    by {matchingVideos[0].uploadedBy.name || matchingVideos[0].uploadedBy.username || 'Unknown'}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     ) : (
                                                         <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-400">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
