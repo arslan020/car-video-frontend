@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
-import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers, FaEllipsisV, FaExternalLinkAlt, FaPaperPlane } from 'react-icons/fa';
+import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers, FaEllipsisV, FaExternalLinkAlt, FaPaperPlane, FaTrash } from 'react-icons/fa';
 import API_URL from '../config';
 
 const Stock = () => {
@@ -48,6 +48,22 @@ const Stock = () => {
     const [sendMobile, setSendMobile] = useState('');
     const [sending, setSending] = useState(false);
 
+    const handleDeleteVideo = async (video) => {
+        if (!window.confirm(`Are you sure you want to delete the video for ${video.title || 'this vehicle'}?`)) return;
+
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(`${API_URL}/api/videos/${video._id}`, config);
+
+            // Update local state
+            setVideos(prev => prev.filter(v => v._id !== video._id));
+            alert('Video deleted successfully');
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert(error.response?.data?.message || 'Failed to delete video');
+        }
+    };
+
     const handleActionClick = (e, itemId) => {
         e.stopPropagation();
         if (activeMenu === itemId) {
@@ -81,7 +97,7 @@ const Stock = () => {
     const fetchVideos = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get(`${API_URL}/api/videos`, config);
+            const { data } = await axios.get(`${API_URL}/api/videos?all=true`, config);
             setVideos(data);
         } catch (error) {
             console.error('Failed to fetch videos', error);
@@ -490,8 +506,8 @@ const Stock = () => {
                                             <tr
                                                 key={uniqueId}
                                                 className={`transition relative ${videoExists
-                                                        ? 'bg-emerald-50 hover:bg-emerald-100'
-                                                        : 'hover:bg-gray-50'
+                                                    ? 'bg-emerald-50 hover:bg-emerald-100'
+                                                    : 'hover:bg-gray-50'
                                                     }`}
                                             >
                                                 {/* Vehicle Image & Name */}
@@ -570,18 +586,30 @@ const Stock = () => {
                                                                         className="absolute w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1 animate-fade-in origin-top-right"
                                                                         style={{ top: '100%', right: 0, marginTop: '5px' }}
                                                                     >
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                setSelectedStockItem(item);
-                                                                                setDirectUploadOpen(true);
-                                                                                setSelectedFile(null);
-                                                                                setUploadError('');
-                                                                                setActiveMenu(null);
-                                                                            }}
-                                                                            className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md flex items-center gap-2 transition font-medium"
-                                                                        >
-                                                                            <FaCloudUploadAlt size={14} /> Upload Another
-                                                                        </button>
+                                                                        {videoExists ? (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    handleDeleteVideo(matchingVideos[0]);
+                                                                                    setActiveMenu(null);
+                                                                                }}
+                                                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center gap-2 transition font-medium"
+                                                                            >
+                                                                                <FaTrash size={14} /> Delete Video
+                                                                            </button>
+                                                                        ) : (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setSelectedStockItem(item);
+                                                                                    setDirectUploadOpen(true);
+                                                                                    setSelectedFile(null);
+                                                                                    setUploadError('');
+                                                                                    setActiveMenu(null);
+                                                                                }}
+                                                                                className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md flex items-center gap-2 transition font-medium"
+                                                                            >
+                                                                                <FaCloudUploadAlt size={14} /> Upload Video
+                                                                            </button>
+                                                                        )}
 
                                                                         {matchingVideos.map((vid, idx) => (
                                                                             <div key={vid._id} className="border-t border-gray-50 mt-1 pt-1">
