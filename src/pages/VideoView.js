@@ -259,9 +259,9 @@ const VideoView = () => {
                                         <img src={Logo} alt="Heston Automotive" className="w-full h-full object-contain" />
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Provided By</p>
+                                        <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Sales Executive</p>
                                         <p className="text-sm font-bold text-gray-800">
-                                            {refName ? `${decodeURIComponent(refName)} - Sales Executive` : 'Heston Automotive'}
+                                            {refName ? `${decodeURIComponent(refName)}` : 'Heston Automotive'}
                                         </p>
                                     </div>
                                 </div>
