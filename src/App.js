@@ -10,6 +10,7 @@ import Stock from './pages/Stock';
 import UploadVideo from './pages/UploadVideo';
 import MyVideos from './pages/MyVideos';
 import VideoView from './pages/VideoView';
+import WatchVideo from './pages/WatchVideo';
 import StaffSettings from './pages/StaffSettings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -107,6 +108,7 @@ function App() {
                     />
 
                     <Route path="/view/:id" element={<VideoView />} />
+                    <Route path="/watch/:token" element={<WatchVideo />} />
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </div>
