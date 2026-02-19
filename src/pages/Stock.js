@@ -39,6 +39,10 @@ const Stock = () => {
     const [activeMenu, setActiveMenu] = useState(null);
     const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
     // Send Modal States
     const [sendModalOpen, setSendModalOpen] = useState(false);
     const [selectedVideo, setSelectedVideo] = useState(null);
@@ -429,6 +433,15 @@ const Stock = () => {
         return matchesSearch && matchesFilter;
     });
 
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredStock.length / ITEMS_PER_PAGE);
+    const paginatedStock = filteredStock.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+    const startEntry = filteredStock.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+    const endEntry = Math.min(currentPage * ITEMS_PER_PAGE, filteredStock.length);
+
     return (
         <DashboardLayout>
             <div className="w-full px-6 pb-12">
@@ -461,7 +474,7 @@ const Stock = () => {
                             {['All', 'With Video', 'No Video'].map((status) => (
                                 <button
                                     key={status}
-                                    onClick={() => setFilterStatus(status)}
+                                    onClick={() => { setFilterStatus(status); setCurrentPage(1); }}
                                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${filterStatus === status
                                         ? 'bg-white text-gray-800 shadow-sm'
                                         : 'text-gray-500 hover:text-gray-700'
@@ -479,7 +492,7 @@ const Stock = () => {
                                 type="text"
                                 placeholder="Search vehicles..."
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                         </div>
@@ -502,7 +515,7 @@ const Stock = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredStock.length > 0 ? filteredStock.map((item, index) => {
+                                    {paginatedStock.length > 0 ? paginatedStock.map((item, index) => {
                                         // Debug logging for IDs
                                         if (item.id) {
                                             //console.log(`Row: ${item.vehicle.registration} | ID: ${item.id}`);
@@ -698,11 +711,30 @@ const Stock = () => {
                         </div>
                     )}
 
-                    {/* Pagination Placeholder */}
+                    {/* Pagination */}
                     <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
-                        <p>Showing <span className="font-medium text-gray-800">1-{filteredStock.length}</span> of <span className="font-medium text-gray-800">{filteredStock.length}</span> entries</p>
+                        <p>Showing <span className="font-medium text-gray-800">{startEntry}-{endEntry}</span> of <span className="font-medium text-gray-800">{filteredStock.length}</span> entries</p>
                         <div className="flex gap-2">
-                            <span className="text-xs text-gray-400">All data loaded</span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >Previous</button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`px-3 py-1 border rounded font-medium ${currentPage === page
+                                            ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                            : 'border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                >{page}</button>
+                            ))}
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                                disabled={currentPage === totalPages || totalPages === 0}
+                                className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >Next</button>
                         </div>
                     </div>
                 </div>
