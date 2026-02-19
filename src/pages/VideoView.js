@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import Logo from '../assets/business-logo.png';
 import API_URL from '../config';
+import UKPhoneInput from '../components/UKPhoneInput';
 
 const VideoView = () => {
     const { id } = useParams();
@@ -112,7 +113,10 @@ const VideoView = () => {
         try {
             await axios.post(`${API_URL}/api/bookings`, {
                 videoId: id,
-                ...bookingData
+                ...bookingData,
+                customerPhone: bookingData.customerPhone
+                    ? `+44${bookingData.customerPhone.replace(/^0/, '')}`
+                    : ''
             });
             setBookingSuccess(true);
             setTimeout(() => {
@@ -147,7 +151,9 @@ const VideoView = () => {
         try {
             await axios.post(`${API_URL}/api/contact/request-call`, {
                 name: callRequestData.name,
-                phone: callRequestData.phone,
+                phone: callRequestData.phone
+                    ? `+44${callRequestData.phone.replace(/^0/, '')}`
+                    : '',
                 vehicleDetails: video.vehicleDetails,
                 videoLink: window.location.href
             });
@@ -467,14 +473,11 @@ const VideoView = () => {
 
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number *</label>
-                                        <input
-                                            type="tel"
-                                            name="customerPhone"
+                                        <UKPhoneInput
                                             value={bookingData.customerPhone}
-                                            onChange={handleInputChange}
+                                            onChange={(digits) => setBookingData(prev => ({ ...prev, customerPhone: digits }))}
                                             required
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="+44 7700 900000"
+                                            placeholder="7700 900 000"
                                         />
                                     </div>
 
@@ -584,13 +587,11 @@ const VideoView = () => {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number *</label>
-                                    <input
-                                        type="tel"
+                                    <UKPhoneInput
                                         value={callRequestData.phone}
-                                        onChange={(e) => setCallRequestData({ ...callRequestData, phone: e.target.value })}
+                                        onChange={(digits) => setCallRequestData({ ...callRequestData, phone: digits })}
                                         required
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="Enter your number"
+                                        placeholder="7700 900 000"
                                     />
                                 </div>
 
