@@ -5,6 +5,16 @@ import AuthContext from '../context/AuthContext';
 import { FaUserTie, FaCar, FaVideo, FaArrowRight } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import API_URL from '../config';
+import {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer
+} from 'recharts';
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState({
@@ -12,14 +22,19 @@ const AdminDashboard = () => {
         stockCount: 0,
         videoCount: 0
     });
+    const [chartData, setChartData] = useState([]);
+    const [chartLoading, setChartLoading] = useState(true);
     const [loading, setLoading] = useState(true);
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
 
     const fetchAllData = useCallback(async () => {
         setLoading(true);
+        setChartLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
+
+            // Fetch counts
             const staffRes = await axios.get(`${API_URL}/api/auth/staff`, config);
 
             let stockCount = 0;
@@ -37,10 +52,15 @@ const AdminDashboard = () => {
                 stockCount: stockCount,
                 videoCount: videoRes.data.length
             });
+
+            // Fetch real chart data
+            const chartRes = await axios.get(`${API_URL}/api/audit-logs/weekly-stats`, config);
+            setChartData(chartRes.data);
         } catch (error) {
             console.error('Failed to fetch dashboard stats', error);
         } finally {
             setLoading(false);
+            setChartLoading(false);
         }
     }, [user]);
 
@@ -78,6 +98,25 @@ const AdminDashboard = () => {
         }
     ];
 
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="bg-white border border-gray-100 rounded-lg shadow-lg p-3 text-sm">
+                    <p className="font-semibold text-gray-700 mb-1">{label}</p>
+                    {payload.map((entry, i) => (
+                        <p key={i} style={{ color: entry.color }}>
+                            {entry.name}: <span className="font-bold">{entry.value}</span>
+                        </p>
+                    ))}
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const totalActivity = chartData.reduce((sum, d) => sum + (d.total || 0), 0);
+    const hasActivity = totalActivity > 0;
+
     return (
         <DashboardLayout>
             <div className="w-full px-6 space-y-8 animate-fadeIn">
@@ -85,34 +124,99 @@ const AdminDashboard = () => {
                 {/* Weekly Activity Section */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-bold text-gray-800">Weekly Activity</h2>
-                        <span className="text-sm text-gray-400">Activity Overview</span>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-800">Weekly Activity</h2>
+                            <p className="text-xs text-gray-400 mt-0.5">Last 7 days of system actions</p>
+                        </div>
+                        <span className="text-xs font-medium text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                            {totalActivity} total actions
+                        </span>
                     </div>
 
-                    {/* Activity Chart Visualization */}
-                    <div className="h-64 w-full bg-gray-50 rounded-lg relative overflow-hidden flex items-end justify-between px-0 pb-0">
-                        {/* Simple CSS/SVG Chart */}
-                        <svg viewBox="0 0 1000 200" className="w-full h-full" preserveAspectRatio="none">
-                            <defs>
-                                <linearGradient id="chartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" style={{ stopColor: 'rgb(59, 130, 246)', stopOpacity: 0.2 }} />
-                                    <stop offset="100%" style={{ stopColor: 'rgb(59, 130, 246)', stopOpacity: 0 }} />
-                                </linearGradient>
-                            </defs>
-                            <path d="M0,200 L0,50 Q250,200 500,80 T1000,100 L1000,200 Z" fill="url(#chartGrad)" />
-                            <path d="M0,50 Q250,200 500,80 T1000,100" fill="none" stroke="#3b82f6" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-                        </svg>
-
-                        {/* X Axis Labels Placeholder */}
-                        <div className="absolute bottom-2 left-0 right-0 flex justify-between px-8 text-xs text-gray-400 font-medium">
-                            <span>Mon</span>
-                            <span>Tue</span>
-                            <span>Wed</span>
-                            <span>Thu</span>
-                            <span>Fri</span>
-                            <span>Sat</span>
-                            <span>Sun</span>
-                        </div>
+                    <div className="h-64 w-full">
+                        {chartLoading ? (
+                            <div className="flex items-center justify-center h-full">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                            </div>
+                        ) : !hasActivity ? (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                <svg className="w-12 h-12 mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                <p className="text-sm">No activity in the last 7 days</p>
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                    data={chartData}
+                                    margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
+                                >
+                                    <defs>
+                                        <linearGradient id="colorUploads" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorDeletions" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
+                                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorOther" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.15} />
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                    <XAxis
+                                        dataKey="label"
+                                        tick={{ fontSize: 12, fill: '#94a3b8' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <YAxis
+                                        tick={{ fontSize: 12, fill: '#94a3b8' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        allowDecimals={false}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend
+                                        iconType="circle"
+                                        iconSize={8}
+                                        wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="uploads"
+                                        name="Uploads"
+                                        stroke="#3b82f6"
+                                        strokeWidth={2.5}
+                                        fill="url(#colorUploads)"
+                                        dot={false}
+                                        activeDot={{ r: 5, strokeWidth: 0 }}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="deletions"
+                                        name="Deletions"
+                                        stroke="#ef4444"
+                                        strokeWidth={2.5}
+                                        fill="url(#colorDeletions)"
+                                        dot={false}
+                                        activeDot={{ r: 5, strokeWidth: 0 }}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="other"
+                                        name="Other"
+                                        stroke="#8b5cf6"
+                                        strokeWidth={2.5}
+                                        fill="url(#colorOther)"
+                                        dot={false}
+                                        activeDot={{ r: 5, strokeWidth: 0 }}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </div>
 
