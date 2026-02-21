@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
+import UKPhoneInput from '../components/UKPhoneInput';
 import { FaCar, FaVideo, FaCopy, FaCheck, FaCheckCircle, FaPlus, FaCloudUploadAlt, FaTimes, FaFile, FaSearch, FaGasPump, FaCog, FaCalendar, FaPalette, FaBolt, FaLeaf, FaTachometerAlt, FaUsers, FaEllipsisV, FaExternalLinkAlt, FaPaperPlane, FaTrash } from 'react-icons/fa';
 import API_URL from '../config';
 
@@ -51,6 +52,14 @@ const Stock = () => {
     const [sendEmail, setSendEmail] = useState('');
     const [sendMobile, setSendMobile] = useState('');
     const [sending, setSending] = useState(false);
+
+    const handleCloseSendModal = () => {
+        setSendModalOpen(false);
+        setCustomerTitle('Mr');
+        setCustomerName('');
+        setSendEmail('');
+        setSendMobile('');
+    };
 
     const handleDeleteVideo = async (video) => {
         if (!window.confirm(`Are you sure you want to delete the video for ${video.title || 'this vehicle'}?`)) return;
@@ -1136,7 +1145,7 @@ const Stock = () => {
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
                         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                             <h3 className="text-xl font-bold text-gray-800">Send Video Link</h3>
-                            <button onClick={() => setSendModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
+                            <button onClick={() => handleCloseSendModal()} className="text-gray-400 hover:text-gray-600 transition">
                                 ×
                             </button>
                         </div>
@@ -1181,18 +1190,15 @@ const Stock = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
-                                <input
-                                    type="tel"
+                                <UKPhoneInput
                                     value={sendMobile}
-                                    onChange={(e) => setSendMobile(e.target.value)}
-                                    placeholder="+44 7700 900000"
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    onChange={setSendMobile}
                                 />
                             </div>
 
                             <div className="flex gap-3 pt-4">
                                 <button
-                                    onClick={() => setSendModalOpen(false)}
+                                    onClick={() => handleCloseSendModal()}
                                     className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
                                 >
                                     Cancel
@@ -1215,7 +1221,7 @@ const Stock = () => {
                                                 customerTitle
                                             }, config);
                                             alert('Video link sent successfully!');
-                                            setSendModalOpen(false);
+                                            handleCloseSendModal();
                                         } catch (error) {
                                             alert('Failed to send link.');
                                         } finally {
