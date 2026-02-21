@@ -7,7 +7,6 @@ import {
     FaTimes, FaSignOutAlt, FaCheckCircle, FaCog
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import InstallApp from '../components/InstallApp';
 import API_URL from '../config';
 
 const StaffSettings = () => {
@@ -70,7 +69,7 @@ const StaffSettings = () => {
 
     return (
         <DashboardLayout>
-            <div className="w-full px-4 sm:px-6 pb-12">
+            <div className="w-full pb-12">
                 {/* Page Header */}
                 <div className="mb-6 sm:mb-8">
                     <div className="flex items-center gap-3 mb-2">
@@ -84,7 +83,7 @@ const StaffSettings = () => {
 
                 {/* Message Toast */}
                 {message.text && (
-                    <div className={`mb-4 sm:mb-6 mx-auto max-w-6xl p-3 sm:p-4 rounded-lg flex items-start sm:items-center gap-3 shadow-sm ${message.type === 'success'
+                    <div className={`mb-4 sm:mb-6 w-full p-3 sm:p-4 rounded-lg flex items-start sm:items-center gap-3 shadow-sm ${message.type === 'success'
                         ? 'bg-green-50 border border-green-200 text-green-700'
                         : 'bg-red-50 border border-red-200 text-red-700'
                         }`}>
@@ -99,7 +98,7 @@ const StaffSettings = () => {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                     {/* Left Sidebar (Settings Navigation / Actions) */}
                     <div className="space-y-4 sm:space-y-6 order-2 lg:order-1">
                         {/* Status Card */}
@@ -134,7 +133,6 @@ const StaffSettings = () => {
                             </div>
                         </div>
 
-                        <InstallApp />
 
                         <button
                             onClick={handleLogout}

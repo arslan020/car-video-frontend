@@ -30,9 +30,9 @@ const DashboardLayout = ({ children }) => {
             )}
 
             {/* Main Content Area */}
-            <div className="flex-1 md:ml-64 flex flex-col h-screen overflow-hidden transition-all duration-300 w-full">
+            <div className="flex-1 md:ml-64 flex flex-col min-h-screen transition-all duration-300 w-full">
                 <Header user={user} onLogout={handleLogout} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-                <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                <main className="flex-1 p-4 md:p-8">
                     {children}
                 </main>
             </div>

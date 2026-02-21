@@ -7,7 +7,6 @@ import {
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import InstallApp from '../components/InstallApp';
 import API_URL from '../config';
 
 const AdminSettings = () => {
@@ -124,7 +123,7 @@ const AdminSettings = () => {
 
                 {/* Message Toast */}
                 {message.text && (
-                    <div className={`mb-6 mx-auto max-w-4xl p-4 rounded-lg flex items-center gap-3 shadow-sm ${message.type === 'success'
+                    <div className={`mb-6 w-full p-4 rounded-lg flex items-center gap-3 shadow-sm ${message.type === 'success'
                         ? 'bg-green-50 border border-green-200 text-green-700'
                         : 'bg-red-50 border border-red-200 text-red-700'
                         }`}>
@@ -136,7 +135,7 @@ const AdminSettings = () => {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
                     {/* Left Sidebar (Settings Navigation / Actions) */}
                     <div className="space-y-6">
                         {/* Status Card */}
@@ -159,7 +158,6 @@ const AdminSettings = () => {
                             </div>
                         </div>
 
-                        <InstallApp />
 
                         <button
                             onClick={handleLogout}
