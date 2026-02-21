@@ -725,8 +725,8 @@ const Stock = () => {
                                     key={page}
                                     onClick={() => setCurrentPage(page)}
                                     className={`px-3 py-1 border rounded font-medium ${currentPage === page
-                                            ? 'bg-blue-50 text-blue-600 border-blue-100'
-                                            : 'border-gray-200 hover:bg-gray-50'
+                                        ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                        : 'border-gray-200 hover:bg-gray-50'
                                         }`}
                                 >{page}</button>
                             ))}
@@ -1199,7 +1199,7 @@ const Stock = () => {
                                 </button>
                                 <button
                                     onClick={async () => {
-                                        if (!customerName || !sendEmail) return;
+                                        if (!customerName || (!sendEmail && !sendMobile)) return;
                                         setSending(true);
                                         try {
                                             // Prioritize current user (Sender), fallback to uploader

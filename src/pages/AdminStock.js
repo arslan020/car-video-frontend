@@ -579,7 +579,7 @@ const AdminStock = () => {
                                 </button>
                                 <button
                                     onClick={async () => {
-                                        if (!customerName || !sendEmail) return;
+                                        if (!customerName || (!sendEmail && !sendMobile)) return;
                                         setSending(true);
                                         try {
                                             // If Admin, use 'Eesa Nasim', otherwise Sender Name, fallback to uploader
