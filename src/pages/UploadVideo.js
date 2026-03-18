@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect, useRef } from 'react';
 import axios from 'axios';
+import * as tus from 'tus-js-client';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import { FaVideo, FaCheckCircle, FaTimesCircle, FaCloudUploadAlt } from 'react-icons/fa';
@@ -10,6 +11,7 @@ const UploadVideo = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadPhase, setUploadPhase] = useState(''); // 'preparing' | 'uploading' | 'saving'
     const [stockInfo, setStockInfo] = useState(null);
     const [uploadSuccess, setUploadSuccess] = useState(false);
     const [uploadError, setUploadError] = useState('');
@@ -72,38 +74,77 @@ const UploadVideo = () => {
         setUploadProgress(0);
 
         try {
-            const formData = new FormData();
-            formData.append('video', selectedFile);
+            // Step 1: Get a one-time direct upload URL from our backend
+            setUploadPhase('preparing');
+            const title = stockInfo
+                ? `${stockInfo.make} ${stockInfo.model} - ${stockInfo.registration}`
+                : selectedFile.name;
 
-            if (stockInfo) {
-                formData.append('title', `${stockInfo.make} ${stockInfo.model} - ${stockInfo.registration}`);
-                formData.append('registration', stockInfo.registration);
-                formData.append('make', stockInfo.make);
-                formData.append('model', stockInfo.model);
-            }
+            const { data } = await axios.post(
+                `${API_URL}/api/videos/direct-upload-url`,
+                { title },
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
 
-            const config = {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${user.token}`,
+            const { uploadUrl, videoId } = data;
+
+            // Step 2: Upload directly to Cloudflare from the browser using TUS
+            setUploadPhase('uploading');
+            await new Promise((resolve, reject) => {
+                const upload = new tus.Upload(selectedFile, {
+                    uploadUrl: uploadUrl, // Use the one-time URL directly
+                    chunkSize: 50 * 1024 * 1024, // 50MB chunks
+                    retryDelays: [0, 3000, 5000, 10000, 20000],
+                    metadata: {
+                        filename: selectedFile.name,
+                        filetype: selectedFile.type,
+                    },
+                    onError: (error) => {
+                        reject(error);
+                    },
+                    onProgress: (bytesUploaded, bytesTotal) => {
+                        const percent = Math.round((bytesUploaded / bytesTotal) * 100);
+                        setUploadProgress(percent);
+                    },
+                    onSuccess: () => {
+                        resolve();
+                    },
+                });
+                upload.start();
+            });
+
+            // Step 3: Tell our backend to save the video record in the DB
+            setUploadPhase('saving');
+            await axios.post(
+                `${API_URL}/api/videos/confirm-upload`,
+                {
+                    videoId,
+                    title,
+                    registration: stockInfo?.registration,
+                    make: stockInfo?.make,
+                    model: stockInfo?.model,
                 },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percentCompleted);
-                },
-            };
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
 
-            await axios.post(`${API_URL}/api/videos`, formData, config);
             setUploadSuccess(true);
             setTimeout(() => {
                 navigate('/staff/videos');
             }, 2000);
+
         } catch (error) {
             console.error(error);
             setUploadError(error.response?.data?.message || 'Video upload failed. Please try again.');
         } finally {
             setUploading(false);
+            setUploadPhase('');
         }
+    };
+
+    const phaseLabel = {
+        preparing: 'Preparing upload...',
+        uploading: `Uploading to Cloudflare... ${uploadProgress}%`,
+        saving: 'Saving video record...',
     };
 
     return (
@@ -210,13 +251,19 @@ const UploadVideo = () => {
                                 {uploading && (
                                     <div className="space-y-2">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Uploading to Cloudflare Stream...</span>
-                                            <span className="text-blue-600 font-medium">{uploadProgress}%</span>
+                                            <span className="text-gray-600">{phaseLabel[uploadPhase] || 'Uploading...'}</span>
+                                            {uploadPhase === 'uploading' && (
+                                                <span className="text-blue-600 font-medium">{uploadProgress}%</span>
+                                            )}
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                                             <div
                                                 className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300 ease-out"
-                                                style={{ width: `${uploadProgress}%` }}
+                                                style={{
+                                                    width: uploadPhase === 'uploading'
+                                                        ? `${uploadProgress}%`
+                                                        : uploadPhase === 'saving' ? '100%' : '5%'
+                                                }}
                                             />
                                         </div>
                                     </div>
@@ -239,7 +286,7 @@ const UploadVideo = () => {
                                             : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl'
                                         }`}
                                 >
-                                    {uploading ? 'Uploading...' : 'Upload Video'}
+                                    {uploading ? phaseLabel[uploadPhase] || 'Uploading...' : 'Upload Video'}
                                 </button>
                             </form>
                         ) : (
