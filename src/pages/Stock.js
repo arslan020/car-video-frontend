@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import axios from 'axios';
+import * as tus from 'tus-js-client';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import UKPhoneInput from '../components/UKPhoneInput';
@@ -26,6 +27,7 @@ const Stock = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadPhase, setUploadPhase] = useState(''); // 'preparing' | 'uploading' | 'saving'
     const [uploadSuccess, setUploadSuccess] = useState(false);
     const [uploadError, setUploadError] = useState('');
     const [isDragging, setIsDragging] = useState(false);
@@ -347,39 +349,59 @@ const Stock = () => {
         setUploadProgress(0);
 
         try {
-            const formData = new FormData();
-            formData.append('video', selectedFile);
-            formData.append('title', `${fetchedVehicle.make} ${fetchedVehicle.model} - ${fetchedVehicle.registration}`);
-            formData.append('make', fetchedVehicle.make);
-            formData.append('model', fetchedVehicle.model);
-            formData.append('registration', fetchedVehicle.registration);
-            formData.append('vehicleDetails', JSON.stringify(fetchedVehicle));
-            formData.append('mileage', smartMileage);
-            formData.append('reserveCarLink', smartReserveLink);
+            const title = `${fetchedVehicle.make} ${fetchedVehicle.model} - ${fetchedVehicle.registration}`;
 
-            const config = {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${user.token}`
+            // Step 1: Get one-time upload URL from backend
+            setUploadPhase('preparing');
+            const { data } = await axios.post(
+                `${API_URL}/api/videos/direct-upload-url`,
+                { title },
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+            const { uploadUrl, videoId } = data;
+
+            // Step 2: Upload directly to Cloudflare from the browser
+            setUploadPhase('uploading');
+            await new Promise((resolve, reject) => {
+                const upload = new tus.Upload(selectedFile, {
+                    uploadUrl,
+                    chunkSize: 50 * 1024 * 1024,
+                    retryDelays: [0, 3000, 5000, 10000, 20000],
+                    metadata: { filename: selectedFile.name, filetype: selectedFile.type },
+                    onError: reject,
+                    onProgress: (bytesUploaded, bytesTotal) => {
+                        setUploadProgress(Math.round((bytesUploaded / bytesTotal) * 100));
+                    },
+                    onSuccess: resolve,
+                });
+                upload.start();
+            });
+
+            // Step 3: Save record to DB
+            setUploadPhase('saving');
+            await axios.post(
+                `${API_URL}/api/videos/confirm-upload`,
+                {
+                    videoId, title,
+                    registration: fetchedVehicle.registration,
+                    make: fetchedVehicle.make,
+                    model: fetchedVehicle.model,
+                    vehicleDetails: fetchedVehicle,
+                    mileage: smartMileage,
+                    reserveCarLink: smartReserveLink,
                 },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percentCompleted);
-                }
-            };
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
 
-            await axios.post(`${API_URL}/api/videos`, formData, config);
             setUploadSuccess(true);
             fetchVideos();
-
-            setTimeout(() => {
-                closeSmartUpload();
-            }, 2500);
+            setTimeout(() => { closeSmartUpload(); }, 2500);
 
         } catch (error) {
             setUploadError(error.response?.data?.message || 'Upload failed. Please try again.');
         } finally {
             setUploading(false);
+            setUploadPhase('');
         }
     };
 
@@ -465,40 +487,57 @@ const Stock = () => {
         };
 
         try {
-            const formData = new FormData();
-            formData.append('video', selectedFile);
-            formData.append('title', `${vehicle.make} ${vehicle.model} - ${vehicle.registration}`);
-            formData.append('make', vehicle.make);
-            formData.append('model', vehicle.model);
-            formData.append('registration', vehicle.registration);
-            formData.append('vehicleDetails', JSON.stringify(vehicleDetails));
+            const title = `${vehicle.make} ${vehicle.model} - ${vehicle.registration}`;
 
-            const config = {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${user.token}`
-                },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percentCompleted);
-                }
-            };
+            // Step 1: Get one-time upload URL from backend
+            setUploadPhase('preparing');
+            const { data } = await axios.post(
+                `${API_URL}/api/videos/direct-upload-url`,
+                { title },
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+            const { uploadUrl, videoId } = data;
 
-            await axios.post(`${API_URL}/api/videos`, formData, config);
+            // Step 2: Upload directly to Cloudflare from the browser
+            setUploadPhase('uploading');
+            await new Promise((resolve, reject) => {
+                const upload = new tus.Upload(selectedFile, {
+                    uploadUrl,
+                    chunkSize: 50 * 1024 * 1024,
+                    retryDelays: [0, 3000, 5000, 10000, 20000],
+                    metadata: { filename: selectedFile.name, filetype: selectedFile.type },
+                    onError: reject,
+                    onProgress: (bytesUploaded, bytesTotal) => {
+                        setUploadProgress(Math.round((bytesUploaded / bytesTotal) * 100));
+                    },
+                    onSuccess: resolve,
+                });
+                upload.start();
+            });
+
+            // Step 3: Save record to DB
+            setUploadPhase('saving');
+            await axios.post(
+                `${API_URL}/api/videos/confirm-upload`,
+                { videoId, title, registration: vehicle.registration, make: vehicle.make, model: vehicle.model, vehicleDetails },
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+
             setUploadSuccess(true);
             fetchVideos();
-
             setTimeout(() => {
                 setDirectUploadOpen(false);
                 setSelectedStockItem(null);
                 setSelectedFile(null);
                 setUploadSuccess(false);
+                setUploadPhase('');
             }, 2500);
 
         } catch (err) {
             setUploadError(err.response?.data?.message || 'Upload failed');
         } finally {
             setUploading(false);
+            setUploadPhase('');
         }
     };
 
