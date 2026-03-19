@@ -77,7 +77,7 @@ const Login = () => {
                             <div>
                                 <input
                                     type="text"
-                                    placeholder="Username"
+                                    placeholder="Username or Email"
                                     className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 text-gray-700 bg-white placeholder-gray-400 transition shadow-sm"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
