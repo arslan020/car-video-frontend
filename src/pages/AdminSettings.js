@@ -2,7 +2,7 @@ import { useContext, useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import {
-    FaSignOutAlt, FaUserShield, FaEdit, FaLock, FaEnvelope,
+    FaSignOutAlt, FaUserShield, FaUser, FaEdit, FaLock, FaEnvelope,
     FaPhone, FaShieldAlt, FaTimes, FaCheckCircle
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,7 @@ const AdminSettings = () => {
     const navigate = useNavigate();
     const [showProfileForm, setShowProfileForm] = useState(false);
     const [formData, setFormData] = useState({
+        name: '',
         username: '',
         email: '',
         phoneNumber: '',
@@ -46,7 +47,7 @@ const AdminSettings = () => {
                 return;
             }
 
-            if (!formData.username && !formData.email && !formData.phoneNumber && !formData.newPassword) {
+            if (!formData.name && !formData.username && !formData.email && !formData.phoneNumber && !formData.newPassword) {
                 setMessage({ type: 'error', text: 'Please provide a field to update' });
                 setLoading(false);
                 return;
@@ -65,6 +66,10 @@ const AdminSettings = () => {
             }
 
             const updateData = { currentPassword: formData.currentPassword };
+
+            if (formData.name && formData.name !== user.name) {
+                updateData.name = formData.name;
+            }
 
             if (formData.username && formData.username !== user.username) {
                 updateData.username = formData.username;
@@ -89,6 +94,7 @@ const AdminSettings = () => {
             setMessage({ type: 'success', text: data.message || 'Profile updated successfully!' });
 
             setFormData({
+                name: '',
                 username: '',
                 email: '',
                 phoneNumber: '',
@@ -116,6 +122,7 @@ const AdminSettings = () => {
     const handleCancelEdit = () => {
         setShowProfileForm(false);
         setFormData({
+            name: '',
             username: '',
             email: '',
             phoneNumber: '',
@@ -204,6 +211,23 @@ const AdminSettings = () => {
                                 {showProfileForm ? (
                                     <form onSubmit={handleProfileUpdate} className="space-y-6">
                                         <div className="grid grid-cols-1 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <FaUser className="text-gray-400" />
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        name="name"
+                                                        value={formData.name}
+                                                        onChange={handleInputChange}
+                                                        placeholder={user?.name || 'Your full name'}
+                                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                                    />
+                                                </div>
+                                            </div>
+
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
                                                 <div className="relative">
