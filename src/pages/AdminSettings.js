@@ -1,9 +1,9 @@
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
 import {
     FaSignOutAlt, FaUserShield, FaUser, FaEdit, FaLock, FaEnvelope,
-    FaPhone, FaShieldAlt, FaTimes, FaCheckCircle, FaWallet, FaSyncAlt
+    FaPhone, FaShieldAlt, FaTimes, FaCheckCircle, FaWallet, FaExternalLinkAlt
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -24,36 +24,6 @@ const AdminSettings = () => {
     });
     const [message, setMessage] = useState({ type: '', text: '' });
     const [loading, setLoading] = useState(false);
-    const [birdBalance, setBirdBalance] = useState(null);
-    const [birdLoading, setBirdLoading] = useState(false);
-    const [birdError, setBirdError] = useState('');
-
-    const fetchBirdBalance = async () => {
-        setBirdLoading(true);
-        setBirdError('');
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.get(`${API_URL}/api/auth/bird-balance`, config);
-            // data could be array of wallets or single object
-            const wallets = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : null;
-            if (wallets && wallets.length > 0) {
-                setBirdBalance(wallets[0]);
-            } else if (data?.balance !== undefined) {
-                setBirdBalance(data);
-            } else {
-                setBirdBalance(data);
-            }
-        } catch (err) {
-            setBirdError(err.response?.data?.message || 'Failed to fetch balance');
-        } finally {
-            setBirdLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchBirdBalance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const handleLogout = () => {
         logout();
@@ -211,48 +181,22 @@ const AdminSettings = () => {
 
                         {/* Bird SMS Balance Card */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider">SMS Balance</h3>
-                                <button
-                                    onClick={fetchBirdBalance}
-                                    disabled={birdLoading}
-                                    className="text-gray-400 hover:text-gray-600 transition disabled:opacity-40"
-                                    title="Refresh"
-                                >
-                                    <FaSyncAlt size={12} className={birdLoading ? 'animate-spin' : ''} />
-                                </button>
-                            </div>
-
-                            {birdLoading ? (
-                                <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                    <FaSyncAlt className="animate-spin" size={14} />
-                                    Loading...
+                            <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">SMS Balance</h3>
+                            <a
+                                href="https://app.bird.com/settings/billing/overview/wallets"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition group"
+                            >
+                                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                    <FaWallet size={15} />
                                 </div>
-                            ) : birdError ? (
-                                <p className="text-red-500 text-xs">{birdError}</p>
-                            ) : birdBalance ? (
-                                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                                    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
-                                        <FaWallet size={15} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">Main Wallet</p>
-                                        <p className="text-xl font-bold text-gray-800">
-                                            {birdBalance.amount !== undefined
-                                                ? `£${Number(birdBalance.amount).toFixed(2)}`
-                                                : birdBalance.balance !== undefined
-                                                ? `£${Number(birdBalance.balance).toFixed(2)}`
-                                                : birdBalance.funds !== undefined
-                                                ? `£${Number(birdBalance.funds).toFixed(2)}`
-                                                : JSON.stringify(birdBalance)
-                                            }
-                                            <span className="text-xs font-medium text-gray-400 ml-1">GBP</span>
-                                        </p>
-                                    </div>
+                                <div className="flex-1">
+                                    <p className="text-xs text-gray-500 font-medium">Main Wallet</p>
+                                    <p className="text-sm font-semibold text-blue-600">View Balance on Bird.com</p>
                                 </div>
-                            ) : (
-                                <p className="text-gray-400 text-xs">No balance data</p>
-                            )}
+                                <FaExternalLinkAlt size={12} className="text-blue-400 group-hover:text-blue-600 transition" />
+                            </a>
                         </div>
 
                         <button
