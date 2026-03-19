@@ -12,6 +12,7 @@ const Settings = () => {
     const [showProfileForm, setShowProfileForm] = useState(false);
     const [formData, setFormData] = useState({
         username: '',
+        email: '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
@@ -41,8 +42,8 @@ const Settings = () => {
                 return;
             }
 
-            if (!formData.username && !formData.newPassword) {
-                setMessage({ type: 'error', text: 'Please provide username or new password to update' });
+            if (!formData.username && !formData.email && !formData.newPassword) {
+                setMessage({ type: 'error', text: 'Please provide username, email, or new password to update' });
                 setLoading(false);
                 return;
             }
@@ -65,6 +66,10 @@ const Settings = () => {
                 updateData.username = formData.username;
             }
 
+            if (formData.email && formData.email !== user.email) {
+                updateData.email = formData.email;
+            }
+
             if (formData.newPassword) {
                 updateData.newPassword = formData.newPassword;
             }
@@ -77,6 +82,7 @@ const Settings = () => {
 
             setFormData({
                 username: '',
+                email: '',
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: ''
@@ -102,6 +108,7 @@ const Settings = () => {
         setShowProfileForm(false);
         setFormData({
             username: '',
+            email: '',
             currentPassword: '',
             newPassword: '',
             confirmPassword: ''
@@ -208,6 +215,20 @@ const Settings = () => {
                                                     value={formData.username}
                                                     onChange={handleInputChange}
                                                     placeholder={user?.username}
+                                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    New Email (optional)
+                                                </label>
+                                                <input
+                                                    type="email"
+                                                    name="email"
+                                                    value={formData.email}
+                                                    onChange={handleInputChange}
+                                                    placeholder={user?.email}
                                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 />
                                             </div>
