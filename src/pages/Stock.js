@@ -26,6 +26,7 @@ const Stock = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadPhase, setUploadPhase] = useState('server'); // 'server' | 'cloudflare'
     const [uploadSuccess, setUploadSuccess] = useState(false);
     const [uploadError, setUploadError] = useState('');
     const [isDragging, setIsDragging] = useState(false);
@@ -261,6 +262,7 @@ const Stock = () => {
         setUploadSuccess(false);
         setUploadError('');
         setUploadProgress(0);
+        setUploadPhase('server');
         setLookupLoading(false);
         setSmartMileage('');
         setSmartReserveLink('');
@@ -345,6 +347,7 @@ const Stock = () => {
         setUploading(true);
         setUploadError('');
         setUploadProgress(0);
+        setUploadPhase('server');
 
         try {
             const formData = new FormData();
@@ -363,21 +366,53 @@ const Stock = () => {
                     Authorization: `Bearer ${user.token}`
                 },
                 onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percentCompleted);
+                    const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setUploadProgress(Math.round(percent / 2)); // scale to 0-50
                 }
             };
 
-            await axios.post(`${API_URL}/api/videos`, formData, config);
+            const { data } = await axios.post(`${API_URL}/api/videos`, formData, config);
+
+            // Fallback: old backend returns video directly (no jobId)
+            if (!data.jobId) {
+                setUploadProgress(100);
+                setUploadSuccess(true);
+                fetchVideos();
+                setTimeout(() => closeSmartUpload(), 2500);
+                return;
+            }
+
+            setUploadProgress(50);
+            setUploadPhase('cloudflare');
+
+            await new Promise((resolve, reject) => {
+                const es = new EventSource(`${API_URL}/api/videos/progress/${data.jobId}?token=${user.token}`);
+                es.addEventListener('progress', (e) => {
+                    const msg = JSON.parse(e.data);
+                    setUploadProgress(50 + Math.round(msg.percent / 2));
+                });
+                es.addEventListener('done', () => {
+                    es.close();
+                    setUploadProgress(100);
+                    resolve();
+                });
+                es.addEventListener('error', (e) => {
+                    es.close();
+                    try {
+                        const msg = JSON.parse(e.data);
+                        reject(new Error(msg.message || 'Cloudflare upload failed'));
+                    } catch {
+                        reject(new Error('Lost connection to upload progress stream'));
+                    }
+                });
+            });
+
             setUploadSuccess(true);
             fetchVideos();
-
-            setTimeout(() => {
-                closeSmartUpload();
-            }, 2500);
+            setTimeout(() => closeSmartUpload(), 2500);
 
         } catch (error) {
-            setUploadError(error.response?.data?.message || 'Upload failed. Please try again.');
+            setUploadError(error.response?.data?.message || error.message || 'Upload failed. Please try again.');
         } finally {
             setUploading(false);
         }
@@ -429,6 +464,7 @@ const Stock = () => {
         setUploading(true);
         setUploadError('');
         setUploadProgress(0);
+        setUploadPhase('server');
 
         const vehicle = stockItem.vehicle;
         const vehicleDetails = {
@@ -479,15 +515,54 @@ const Stock = () => {
                     Authorization: `Bearer ${user.token}`
                 },
                 onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percentCompleted);
+                    const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setUploadProgress(Math.round(percent / 2)); // scale to 0-50
                 }
             };
 
-            await axios.post(`${API_URL}/api/videos`, formData, config);
+            const { data } = await axios.post(`${API_URL}/api/videos`, formData, config);
+
+            // Fallback: old backend returns video directly (no jobId)
+            if (!data.jobId) {
+                setUploadProgress(100);
+                setUploadSuccess(true);
+                fetchVideos();
+                setTimeout(() => {
+                    setDirectUploadOpen(false);
+                    setSelectedStockItem(null);
+                    setSelectedFile(null);
+                    setUploadSuccess(false);
+                }, 2500);
+                return;
+            }
+
+            setUploadProgress(50);
+            setUploadPhase('cloudflare');
+
+            await new Promise((resolve, reject) => {
+                const es = new EventSource(`${API_URL}/api/videos/progress/${data.jobId}?token=${user.token}`);
+                es.addEventListener('progress', (e) => {
+                    const msg = JSON.parse(e.data);
+                    setUploadProgress(50 + Math.round(msg.percent / 2));
+                });
+                es.addEventListener('done', () => {
+                    es.close();
+                    setUploadProgress(100);
+                    resolve();
+                });
+                es.addEventListener('error', (e) => {
+                    es.close();
+                    try {
+                        const msg = JSON.parse(e.data);
+                        reject(new Error(msg.message || 'Cloudflare upload failed'));
+                    } catch {
+                        reject(new Error('Lost connection to upload progress stream'));
+                    }
+                });
+            });
+
             setUploadSuccess(true);
             fetchVideos();
-
             setTimeout(() => {
                 setDirectUploadOpen(false);
                 setSelectedStockItem(null);
@@ -496,7 +571,7 @@ const Stock = () => {
             }, 2500);
 
         } catch (err) {
-            setUploadError(err.response?.data?.message || 'Upload failed');
+            setUploadError(err.response?.data?.message || err.message || 'Upload failed');
         } finally {
             setUploading(false);
         }
@@ -1003,7 +1078,9 @@ const Stock = () => {
                                             {uploading && (
                                                 <div className="space-y-2 mb-4">
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-600">Uploading to Cloudflare Stream...</span>
+                                                        <span className="text-gray-600">
+                                                            {uploadPhase === 'cloudflare' ? '☁️ Uploading to Cloudflare...' : '📤 Sending to server...'}
+                                                        </span>
                                                         <span className="text-blue-600 font-medium">{uploadProgress}%</span>
                                                     </div>
                                                     <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
@@ -1012,6 +1089,9 @@ const Stock = () => {
                                                             style={{ width: `${uploadProgress}%` }}
                                                         />
                                                     </div>
+                                                    {uploadPhase === 'cloudflare' && (
+                                                        <p className="text-xs text-amber-600">⚠️ Large files may take a few minutes — please keep this page open</p>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -1165,7 +1245,9 @@ const Stock = () => {
                                     {uploading && (
                                         <div className="space-y-2 mb-4">
                                             <div className="flex justify-between text-sm">
-                                                <span className="text-gray-600">Uploading to Cloudflare Stream...</span>
+                                                <span className="text-gray-600">
+                                                    {uploadPhase === 'cloudflare' ? '☁️ Uploading to Cloudflare...' : '📤 Sending to server...'}
+                                                </span>
                                                 <span className="text-blue-600 font-medium">{uploadProgress}%</span>
                                             </div>
                                             <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
@@ -1174,6 +1256,9 @@ const Stock = () => {
                                                     style={{ width: `${uploadProgress}%` }}
                                                 />
                                             </div>
+                                            {uploadPhase === 'cloudflare' && (
+                                                <p className="text-xs text-amber-600">⚠️ Large files may take a few minutes — please keep this page open</p>
+                                            )}
                                         </div>
                                     )}
 
