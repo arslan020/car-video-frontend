@@ -342,7 +342,7 @@ const CustomerViews = () => {
                                                 {/* Sent By (Admin only) */}
                                                 {user?.role === 'admin' && (
                                                     <td className="px-6 py-4 text-sm text-gray-500">
-                                                        {view.uploadedBy?.name || view.uploadedBy?.username || '—'}
+                                                        {view.shareId?.user?.name || view.shareId?.user?.username || view.uploadedBy?.name || view.uploadedBy?.username || '—'}
                                                     </td>
                                                 )}
 
