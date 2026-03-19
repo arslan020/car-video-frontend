@@ -16,6 +16,7 @@ const AdminSettings = () => {
     const [formData, setFormData] = useState({
         username: '',
         email: '',
+        phoneNumber: '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
@@ -45,8 +46,8 @@ const AdminSettings = () => {
                 return;
             }
 
-            if (!formData.username && !formData.email && !formData.newPassword) {
-                setMessage({ type: 'error', text: 'Please provide username, email, or new password to update' });
+            if (!formData.username && !formData.email && !formData.phoneNumber && !formData.newPassword) {
+                setMessage({ type: 'error', text: 'Please provide a field to update' });
                 setLoading(false);
                 return;
             }
@@ -73,6 +74,10 @@ const AdminSettings = () => {
                 updateData.email = formData.email;
             }
 
+            if (formData.phoneNumber && formData.phoneNumber !== user.phoneNumber) {
+                updateData.phoneNumber = formData.phoneNumber;
+            }
+
             if (formData.newPassword) {
                 updateData.newPassword = formData.newPassword;
             }
@@ -86,6 +91,7 @@ const AdminSettings = () => {
             setFormData({
                 username: '',
                 email: '',
+                phoneNumber: '',
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: ''
@@ -112,6 +118,7 @@ const AdminSettings = () => {
         setFormData({
             username: '',
             email: '',
+            phoneNumber: '',
             currentPassword: '',
             newPassword: '',
             confirmPassword: ''
@@ -226,6 +233,23 @@ const AdminSettings = () => {
                                                         value={formData.email}
                                                         onChange={handleInputChange}
                                                         placeholder={user?.email}
+                                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <FaPhone className="text-gray-400" />
+                                                    </div>
+                                                    <input
+                                                        type="tel"
+                                                        name="phoneNumber"
+                                                        value={formData.phoneNumber}
+                                                        onChange={handleInputChange}
+                                                        placeholder={user?.phoneNumber || 'e.g. 07700900000'}
                                                         className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                                                     />
                                                 </div>
