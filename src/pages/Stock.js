@@ -1003,6 +1003,32 @@ const Stock = () => {
                                         <div className="border-t pt-2">
                                             <h4 className="font-bold text-gray-700 mb-3">Upload Video File</h4>
 
+                                            {/* Mileage & Reserve Link - outside drop zone */}
+                                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Mileage</label>
+                                                    <input
+                                                        type="number"
+                                                        value={smartMileage}
+                                                        onChange={(e) => setSmartMileage(e.target.value)}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="e.g. 45000"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Reserve Car Link</label>
+                                                    <input
+                                                        type="url"
+                                                        value={smartReserveLink}
+                                                        onChange={(e) => setSmartReserveLink(e.target.value)}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="https://..."
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                </div>
+                                            </div>
+
                                             {/* File Upload Drag and Drop */}
                                             <div
                                                 onDragOver={handleDragOver}
@@ -1014,29 +1040,6 @@ const Stock = () => {
                                                     : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
                                                     }`}
                                             >
-                                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                                    <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Mileage</label>
-                                                        <input
-                                                            type="number"
-                                                            value={smartMileage}
-                                                            onChange={(e) => setSmartMileage(e.target.value)}
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                            placeholder="e.g. 45000"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Reserve Car Link</label>
-                                                        <input
-                                                            type="url"
-                                                            value={smartReserveLink}
-                                                            onChange={(e) => setSmartReserveLink(e.target.value)}
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                            placeholder="https://..."
-                                                        />
-                                                    </div>
-                                                </div>
-
                                                 <input
                                                     ref={fileInputRef}
                                                     type="file"
