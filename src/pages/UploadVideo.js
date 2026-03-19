@@ -10,6 +10,7 @@ const UploadVideo = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadPhase, setUploadPhase] = useState('server'); // 'server' | 'cloudflare'
     const [stockInfo, setStockInfo] = useState(null);
     const [uploadSuccess, setUploadSuccess] = useState(false);
     const [uploadError, setUploadError] = useState('');
@@ -70,6 +71,7 @@ const UploadVideo = () => {
         setUploadSuccess(false);
         setUploadError('');
         setUploadProgress(0);
+        setUploadPhase('server'); // 'server' | 'cloudflare'
 
         try {
             const formData = new FormData();
@@ -87,24 +89,62 @@ const UploadVideo = () => {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${user.token}`,
                 },
+                // Phase 1: frontend → backend (maps to 0–50%)
                 onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percentCompleted);
+                    const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setUploadProgress(Math.round(percent / 2)); // scale to 0–50
                 },
             };
 
-            await axios.post(`${API_URL}/api/videos`, formData, config);
+            // POST file to backend → get jobId back (202)
+            const { data } = await axios.post(`${API_URL}/api/videos`, formData, config);
+
+            // Phase 1 complete → now listen for Cloudflare progress via SSE
+            setUploadProgress(50);
+            setUploadPhase('cloudflare');
+
+            await new Promise((resolve, reject) => {
+                // EventSource doesn't support custom headers — pass token via query param
+                const sseUrl = `${API_URL}/api/videos/progress/${data.jobId}?token=${user.token}`;
+                const es = new EventSource(sseUrl);
+
+                es.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+
+                        if (msg.type === 'progress') {
+                            // Cloudflare progress: map 0–100 → 50–100 on bar
+                            const scaled = 50 + Math.round(msg.percentage / 2);
+                            setUploadProgress(scaled);
+                        } else if (msg.type === 'done') {
+                            setUploadProgress(100);
+                            es.close();
+                            resolve();
+                        } else if (msg.type === 'error') {
+                            es.close();
+                            reject(new Error(msg.message || 'Cloudflare upload failed'));
+                        }
+                    } catch (_) {}
+                };
+
+                es.onerror = () => {
+                    es.close();
+                    reject(new Error('Lost connection to upload progress stream'));
+                };
+            });
+
             setUploadSuccess(true);
             setTimeout(() => {
                 navigate('/staff/videos');
             }, 2000);
         } catch (error) {
             console.error(error);
-            setUploadError(error.response?.data?.message || 'Video upload failed. Please try again.');
+            setUploadError(error.response?.data?.message || error.message || 'Video upload failed. Please try again.');
         } finally {
             setUploading(false);
         }
     };
+
 
     return (
         <DashboardLayout>
@@ -210,7 +250,11 @@ const UploadVideo = () => {
                                 {uploading && (
                                     <div className="space-y-2">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Uploading to Cloudflare Stream...</span>
+                                            <span className="text-gray-600">
+                                                {uploadPhase === 'cloudflare'
+                                                    ? '☁️ Uploading to Cloudflare...'
+                                                    : '📤 Sending to server...'}
+                                            </span>
                                             <span className="text-blue-600 font-medium">{uploadProgress}%</span>
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
@@ -219,6 +263,11 @@ const UploadVideo = () => {
                                                 style={{ width: `${uploadProgress}%` }}
                                             />
                                         </div>
+                                        {uploadPhase === 'cloudflare' && (
+                                            <p className="text-xs text-gray-400 text-center">
+                                                Large files may take a few minutes — please keep this page open
+                                            </p>
+                                        )}
                                     </div>
                                 )}
 
