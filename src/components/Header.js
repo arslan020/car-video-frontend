@@ -19,7 +19,11 @@ const Header = ({ user, onLogout, onToggleSidebar }) => {
             </div>
 
             {/* Right side (User Profile) */}
-            <div className="relative">
+            <div 
+                className="relative"
+                onMouseEnter={() => setIsOpen(true)}
+                onMouseLeave={() => setIsOpen(false)}
+            >
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     className="flex items-center gap-3 hover:bg-gray-50 px-3 py-2 rounded-lg transition focus:outline-none"
@@ -34,7 +38,7 @@ const Header = ({ user, onLogout, onToggleSidebar }) => {
 
                 {/* Dropdown Menu */}
                 {isOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-100 animate-fadeIn">
+                    <div className="absolute right-0 top-full pt-1 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-100 animate-fadeIn z-50">
                         <button
                             onClick={onLogout}
                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
@@ -45,14 +49,6 @@ const Header = ({ user, onLogout, onToggleSidebar }) => {
                     </div>
                 )}
             </div>
-
-            {/* Click outside to close (simple overlay for now) */}
-            {isOpen && (
-                <div
-                    className="fixed inset-0 z-[-1]"
-                    onClick={() => setIsOpen(false)}
-                ></div>
-            )}
         </header>
     );
 };
