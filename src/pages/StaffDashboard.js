@@ -151,7 +151,11 @@ const StaffDashboard = () => {
         })
         .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
         .slice(0, 5);
-    const recentVideos = videos.slice(0, 5);
+    const recentVideos = videos.filter(v => {
+        const normReg = (v.registration || '').replace(/\s/g, '').toUpperCase();
+        const isSold = normReg && stockRegs.size > 0 && !stockRegs.has(normReg);
+        return !isSold;
+    }).slice(0, 5);
     const videosThisWeek = videos.filter(v => {
         const uploadDate = new Date(v.createdAt);
         const weekAgo = new Date();
