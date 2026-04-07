@@ -23,6 +23,7 @@ const CustomerViews = () => {
     // Track suspended state per shareId: { [shareId]: true/false }
     const [suspendedMap, setSuspendedMap] = useState({});
     const [suspendLoading, setSuspendLoading] = useState({});
+    const [stockRegs, setStockRegs] = useState(new Set());
     const { user } = useContext(AuthContext);
 
     const fetchVideos = useCallback(async () => {
@@ -54,7 +55,22 @@ const CustomerViews = () => {
 
     useEffect(() => {
         fetchVideos();
-    }, [fetchVideos]);
+        const fetchStock = async () => {
+            try {
+                const config = { headers: { Authorization: `Bearer ${user.token}` } };
+                const { data } = await axios.get(`${API_URL}/api/autotrader/stock`, config);
+                const regs = new Set(
+                    (data.results || []).map(item =>
+                        (item.vehicle?.registration || '').replace(/\s/g, '').toUpperCase()
+                    ).filter(Boolean)
+                );
+                setStockRegs(regs);
+            } catch (error) {
+                console.error('Failed to fetch stock', error);
+            }
+        };
+        fetchStock();
+    }, [fetchVideos, user.token]);
 
     const handleToggleSuspend = async (shareIdObj, e) => {
         e.stopPropagation(); // prevent row expand/collapse
@@ -283,6 +299,8 @@ const CustomerViews = () => {
                                         const shareId = view.shareId?._id || view.shareId;
                                         const isSuspended = shareId ? (suspendedMap[shareId] ?? (view.shareId?.suspended || false)) : false;
                                         const isTogglingThis = shareId ? (suspendLoading[shareId] ?? false) : false;
+                                        const normViewReg = (view.registration || '').replace(/\s/g, '').toUpperCase();
+                                        const isSold = normViewReg && stockRegs.size > 0 && !stockRegs.has(normViewReg);
 
                                         return [
                                             <tr key={key}
@@ -309,7 +327,7 @@ const CustomerViews = () => {
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                            <div className="flex flex-col gap-0.5 mt-0.5">
                                                                 {view.viewerEmail && (
                                                                     <span className="flex items-center gap-1 text-xs text-gray-400">
                                                                         <FaEnvelope size={9} /> {view.viewerEmail}
@@ -333,11 +351,18 @@ const CustomerViews = () => {
                                                     <p className="text-sm font-medium text-gray-800 leading-tight">
                                                         {view.make && view.model ? `${view.make} ${view.model}` : view.videoTitle}
                                                     </p>
-                                                    {view.registration && (
-                                                        <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-blue-600 font-mono text-xs rounded-md border border-blue-100">
-                                                            {view.registration}
-                                                        </span>
-                                                    )}
+                                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                        {view.registration && (
+                                                            <span className="px-2 py-0.5 bg-blue-50 text-blue-600 font-mono text-xs rounded-md border border-blue-100">
+                                                                {view.registration}
+                                                            </span>
+                                                        )}
+                                                        {isSold && (
+                                                            <span className="px-2 py-0.5 bg-red-50 text-red-600 text-xs font-semibold rounded-md border border-red-200">
+                                                                Sold
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
 
                                                 {/* Sent By (Admin only) */}

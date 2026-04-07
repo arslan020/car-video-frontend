@@ -163,7 +163,12 @@ const StaffDashboard = () => {
         return uploadDate >= weekAgo;
     }).length;
 
-    const totalViews = videos.reduce((sum, v) => sum + (v.viewCount || 0), 0);
+    const totalViews = videos
+        .filter(v => {
+            const reg = (v.registration || '').replace(/\s/g, '').toUpperCase();
+            return !reg || stockRegs.size === 0 || stockRegs.has(reg);
+        })
+        .reduce((sum, v) => sum + (v.viewCount || 0), 0);
 
     const VideoRow = ({ video, showRank, rank }) => {
         const normReg = (video.registration || '').replace(/\s/g, '').toUpperCase();
