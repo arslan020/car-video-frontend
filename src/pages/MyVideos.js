@@ -5,15 +5,18 @@ import AuthContext from '../context/AuthContext';
 import { FaVideo, FaCopy, FaTrash, FaEye, FaCalendar, FaUser, FaPlay, FaTimes, FaExternalLinkAlt, FaPaperPlane, FaLink, FaSearch } from 'react-icons/fa';
 import UKPhoneInput from '../components/UKPhoneInput';
 import API_URL from '../config';
+import useToast from '../hooks/useToast';
 
 const ITEMS_PER_PAGE = 10;
 
 const MyVideos = () => {
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [stockRegs, setStockRegs] = useState(new Set());
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
+    const [stockFilter, setStockFilter] = useState('instock'); // 'instock' | 'sold'
     const { user } = useContext(AuthContext);
 
     // Send Modal States
@@ -31,6 +34,7 @@ const MyVideos = () => {
     const [reserveLink, setReserveLink] = useState('');
     const [savingReserveLink, setSavingReserveLink] = useState(false);
     const [vehicleMetadata, setVehicleMetadata] = useState({});
+    const toast = useToast();
 
     const fetchVideos = useCallback(async () => {
         try {
@@ -43,6 +47,21 @@ const MyVideos = () => {
             setLoading(false);
         }
     }, [user]);
+
+    const fetchStock = useCallback(async () => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const { data } = await axios.get(`${API_URL}/api/autotrader/stock`, config);
+            const regs = new Set(
+                (data.results || []).map(item =>
+                    (item.vehicle?.registration || '').replace(/\s/g, '').toUpperCase()
+                ).filter(Boolean)
+            );
+            setStockRegs(regs);
+        } catch (error) {
+            console.error('Failed to fetch stock', error);
+        }
+    }, [user.token]);
 
     const fetchAllVehicleMetadata = useCallback(async () => {
         try {
@@ -62,7 +81,8 @@ const MyVideos = () => {
     useEffect(() => {
         fetchVideos();
         fetchAllVehicleMetadata();
-    }, [fetchVideos, fetchAllVehicleMetadata]);
+        fetchStock();
+    }, [fetchVideos, fetchAllVehicleMetadata, fetchStock]);
 
     const copyLink = async (id) => {
         let shareId = '';
@@ -79,8 +99,12 @@ const MyVideos = () => {
             link += `?s=${shareId}`;
         }
 
-        navigator.clipboard.writeText(link);
-        alert('Link copied to clipboard!');
+        try {
+            await navigator.clipboard.writeText(link);
+            toast.success({ title: 'Copied', message: 'Link copied to clipboard.' });
+        } catch {
+            toast.error({ title: 'Copy failed', message: 'Could not copy link. Please try again.' });
+        }
     };
 
     const handleDelete = async (id) => {
@@ -90,10 +114,10 @@ const MyVideos = () => {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
             await axios.delete(`${API_URL}/api/videos/${id}`, config);
             setVideos(videos.filter(v => v._id !== id));
-            alert('Video deleted successfully');
+            toast.success({ title: 'Deleted', message: 'Video deleted successfully.' });
         } catch (error) {
             console.error('Delete error:', error);
-            alert(error.response?.data?.message || 'Failed to delete video');
+            toast.error({ title: 'Delete failed', message: error.response?.data?.message || 'Failed to delete video.' });
         }
     };
 
@@ -118,7 +142,7 @@ const MyVideos = () => {
         if (!reserveLinkVideo) return;
         const normReg = (reserveLinkVideo.registration || '').replace(/\s/g, '').toUpperCase();
         if (!normReg) {
-            alert('This video has no registration number.');
+            toast.error({ title: 'Missing registration', message: 'This video has no registration number.' });
             return;
         }
         setSavingReserveLink(true);
@@ -129,13 +153,13 @@ const MyVideos = () => {
                 { reserveLink },
                 config
             );
-            alert('Reserve link saved!');
+            toast.success({ title: 'Saved', message: 'Reserve link saved.' });
             setVehicleMetadata(prev => ({ ...prev, [normReg]: { ...prev[normReg], reserveLink } }));
             setReserveLinkModalOpen(false);
             setReserveLinkVideo(null);
             setReserveLink('');
         } catch {
-            alert('Failed to save reserve link.');
+            toast.error({ title: 'Save failed', message: 'Failed to save reserve link.' });
         } finally {
             setSavingReserveLink(false);
         }
@@ -165,11 +189,11 @@ const MyVideos = () => {
                 customerName,
                 customerTitle
             }, config);
-            alert('Video link sent successfully!');
+            toast.success({ title: 'Sent', message: 'Video link sent successfully.' });
             handleCloseSendModal();
         } catch (error) {
             console.error('Send error:', error);
-            alert('Failed to send link.');
+            toast.error({ title: 'Send failed', message: 'Failed to send link.' });
         } finally {
             setSending(false);
         }
@@ -182,11 +206,15 @@ const MyVideos = () => {
         const reg = (video.registration || '').toLowerCase();
         const make = (video.make || '').toLowerCase();
         const model = (video.model || '').toLowerCase();
-        
-        return title.includes(searchStr) || 
-               reg.includes(searchStr) || 
-               make.includes(searchStr) || 
-               model.includes(searchStr);
+        const matchesSearch = title.includes(searchStr) || reg.includes(searchStr) || make.includes(searchStr) || model.includes(searchStr);
+
+        const normReg = (video.registration || '').replace(/\s/g, '').toUpperCase();
+        const isSoldVideo = normReg && stockRegs.size > 0 && !stockRegs.has(normReg);
+        const matchesFilter =
+            (stockFilter === 'sold' && isSoldVideo) ||
+            (stockFilter === 'instock' && !isSoldVideo);
+
+        return matchesSearch && matchesFilter;
     });
 
     // Reset to page 1 when searching
@@ -251,33 +279,72 @@ const MyVideos = () => {
                         <p className="text-gray-500 mb-6">Upload your first car video to get started!</p>
                         <a
                             href="/staff/upload"
-                            className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                            className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition shadow-sm"
                         >
                             Upload Video
                         </a>
                     </div>
                 ) : (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        {/* Filter Tabs */}
+                        <div className="flex items-center gap-1 px-4 pt-4 pb-3 border-b border-gray-100">
+                            {[
+                                { label: 'With Videos', value: 'instock', count: videos.filter(v => { const r = (v.registration||'').replace(/\s/g,'').toUpperCase(); return !r || stockRegs.size === 0 || stockRegs.has(r); }).length },
+                                { label: 'Sold', value: 'sold', count: videos.filter(v => { const r = (v.registration||'').replace(/\s/g,'').toUpperCase(); return r && stockRegs.size > 0 && !stockRegs.has(r); }).length },
+                            ].map(tab => (
+                                <button
+                                    key={tab.value}
+                                    onClick={() => { setStockFilter(tab.value); setCurrentPage(1); }}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                        stockFilter === tab.value
+                                            ? tab.value === 'sold'
+                                                ? 'bg-red-50 text-red-600 border border-red-200'
+                                                : 'bg-blue-50 text-blue-600 border border-blue-200'
+                                            : 'text-gray-500 hover:bg-gray-50 border border-transparent'
+                                    }`}
+                                >
+                                    {tab.label}
+                                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                                        stockFilter === tab.value
+                                            ? tab.value === 'sold' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                                            : 'bg-gray-100 text-gray-500'
+                                    }`}>{tab.count}</span>
+                                </button>
+                            ))}
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0">
-                                    <tr>
-                                        <th className="px-6 py-4">Video</th>
-                                        <th className="px-6 py-4">Details</th>
-                                        <th className="px-6 py-4">Views</th>
-                                        <th className="px-6 py-4">Reserve Link</th>
-                                        <th className="px-6 py-4 text-right">Actions</th>
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-8">#</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Video</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Views</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Reserve Link</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody>
                                     {paginatedVideos.length > 0 ? (
-                                        paginatedVideos.map((video) => (
-                                            <tr key={video._id} className="hover:bg-gray-50 transition-colors">
+                                        paginatedVideos.map((video, index) => {
+                                            const normReg = (video.registration || '').replace(/\s/g, '').toUpperCase();
+                                            const hasReserveLink = !!vehicleMetadata[normReg]?.reserveLink;
+                                            const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
+                                            const isSold = normReg && stockRegs.size > 0 && !stockRegs.has(normReg);
+                                            let displayName = video.title || video.originalName || 'Untitled Video';
+                                            if (video.registration) {
+                                                const regPattern = new RegExp(`\\s*-\\s*${video.registration}`, 'i');
+                                                displayName = displayName.replace(regPattern, '');
+                                            }
+                                            return (
+                                            <tr key={video._id} className="group border-b border-gray-100 bg-white hover:bg-gray-50/80 transition-colors">
+                                                {/* Row number */}
+                                                <td className="px-5 py-3.5 text-xs text-gray-300 font-medium">{globalIndex}</td>
+
                                                 {/* Video Thumbnail & Title */}
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-4">
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex items-center gap-3">
                                                         <div
-                                                            className="w-20 h-14 bg-gray-900 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 cursor-pointer group relative flex items-center justify-center"
+                                                            className="w-20 h-14 bg-gray-900 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200 cursor-pointer group/thumb relative flex items-center justify-center shadow-sm"
                                                             onClick={() => setSelectedVideo(video)}
                                                         >
                                                             {video.thumbnailUrl || video.cloudflareVideoId || video.youtubeVideoId ? (
@@ -296,102 +363,94 @@ const MyVideos = () => {
                                                             ) : (
                                                                 <FaVideo className="text-gray-600" size={20} />
                                                             )}
-                                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
-                                                                <FaPlay className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={12} />
+                                                            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 transition-all flex items-center justify-center">
+                                                                <div className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity shadow">
+                                                                    <FaPlay className="text-gray-800 ml-0.5" size={10} />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <h3 className="font-bold text-gray-800 text-sm truncate max-w-[200px]">
-                                                                {video.title || video.originalName || 'Untitled Video'}
+                                                            <h3 className="font-semibold text-gray-900 text-sm truncate max-w-[220px] leading-tight">
+                                                                {displayName}
                                                             </h3>
-                                                            <p className="text-xs text-gray-500 mt-0.5">
-                                                                {video.registration || 'No Registration'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-
-                                                {/* Details (Date & User) */}
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                            <FaCalendar size={12} className="text-gray-400" />
-                                                            <span>
-                                                                {new Date(video.createdAt).toLocaleDateString('en-GB', {
-                                                                    day: 'numeric',
-                                                                    month: 'short',
-                                                                    year: 'numeric'
-                                                                })}
-                                                            </span>
-                                                        </div>
-                                                        {user?.role === 'admin' && video.uploadedBy && (
-                                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                                <FaUser size={10} className="text-gray-400" />
-                                                                <span>{video.uploadedBy.name || video.uploadedBy.username}</span>
+                                                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                                {video.registration && (
+                                                                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 font-mono text-xs rounded-md border border-blue-100">
+                                                                        {video.registration}
+                                                                    </span>
+                                                                )}
+                                                                {isSold && (
+                                                                    <span className="px-2 py-0.5 bg-red-50 text-red-600 text-xs font-semibold rounded-md border border-red-200">
+                                                                        Sold
+                                                                    </span>
+                                                                )}
+                                                                <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                                    <FaCalendar size={9} />
+                                                                    {new Date(video.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                </span>
                                                             </div>
-                                                        )}
+                                                        </div>
                                                     </div>
                                                 </td>
 
                                                 {/* Views */}
-                                                <td className="px-6 py-4">
-                                                    <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">
-                                                        <FaEye size={12} />
+                                                <td className="px-5 py-3.5">
+                                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold border border-blue-100">
+                                                        <FaEye size={10} />
                                                         {video.viewCount || 0}
                                                     </div>
                                                 </td>
 
                                                 {/* Reserve Link */}
-                                                <td className="px-6 py-4">
+                                                <td className="px-5 py-3.5">
                                                     <button
                                                         onClick={() => openReserveLinkModal(video)}
-                                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${vehicleMetadata[(video.registration || '').replace(/\s/g, '').toUpperCase()]?.reserveLink
-                                                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                                                : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasReserveLink
+                                                                ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm'
+                                                                : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                             }`}
                                                     >
-                                                        <FaLink size={12} /> {vehicleMetadata[(video.registration || '').replace(/\s/g, '').toUpperCase()]?.reserveLink ? 'Edit Link' : 'Add Link'}
+                                                        <FaLink size={10} />
+                                                        {hasReserveLink ? 'Edit Link' : 'Add Link'}
                                                     </button>
                                                 </td>
 
                                                 {/* Actions */}
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
+                                                <td className="px-5 py-3.5 text-right">
+                                                    <div className="inline-flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
                                                         <button
-                                                            onClick={() => {
-                                                                setVideoForSend(video);
-                                                                setSendModalOpen(true);
-                                                            }}
-                                                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                                            onClick={() => { setVideoForSend(video); setSendModalOpen(true); }}
+                                                            className="p-1.5 text-blue-600 hover:bg-white rounded-md transition-colors"
                                                             title="Send to Customer"
                                                         >
-                                                            <FaPaperPlane size={16} />
+                                                            <FaPaperPlane size={13} />
                                                         </button>
                                                         <button
                                                             onClick={() => copyLink(video._id)}
-                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                            className="p-1.5 text-blue-600 hover:bg-white rounded-md transition-colors"
                                                             title="Copy Link"
                                                         >
-                                                            <FaCopy size={16} />
+                                                            <FaCopy size={13} />
                                                         </button>
                                                         <button
                                                             onClick={() => window.open(`${window.location.origin}/view/${video._id}`, '_blank')}
-                                                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                            className="p-1.5 text-emerald-600 hover:bg-white rounded-md transition-colors"
                                                             title="Open Video"
                                                         >
-                                                            <FaExternalLinkAlt size={16} />
+                                                            <FaExternalLinkAlt size={13} />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(video._id)}
-                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            className="p-1.5 text-red-500 hover:bg-white rounded-md transition-colors"
                                                             title="Delete Video"
                                                         >
-                                                            <FaTrash size={16} />
+                                                            <FaTrash size={13} />
                                                         </button>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))
+                                            );
+                                        })
                                     ) : (
                                         <tr>
                                             <td colSpan="5" className="px-6 py-12 text-center text-gray-500 font-medium">
@@ -505,7 +564,7 @@ const MyVideos = () => {
                                     <button
                                         onClick={handleSendLink}
                                         disabled={sending || (!sendEmail && !sendMobile)}
-                                        className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition shadow-lg shadow-purple-200 disabled:opacity-50"
+                                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
                                     >
                                         {sending ? 'Sending...' : 'Send Link'}
                                     </button>

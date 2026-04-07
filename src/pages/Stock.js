@@ -670,38 +670,39 @@ const Stock = () => {
                     ) : (
                         <div className="overflow-x-auto lg:overflow-visible">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0">
-                                    <tr>
-                                        <th className="px-6 py-4">Vehicle</th>
-                                        <th className="px-6 py-4">Details</th>
-                                        <th className="px-6 py-4">Status</th>
-                                        <th className="px-6 py-4 text-right">Actions</th>
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-8">#</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Vehicle</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden lg:table-cell">Details</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody>
                                     {paginatedStock.length > 0 ? paginatedStock.map((item, index) => {
-                                        // Debug logging for IDs
-                                        if (item.id) {
-                                            //console.log(`Row: ${item.vehicle.registration} | ID: ${item.id}`);
-                                        }
-
                                         const uniqueId = `${item.id}-${index}`;
                                         const matchingVideos = getMatchingVideos(item);
                                         const videoExists = matchingVideos.length > 0;
                                         const imageUrl = item.media?.images?.[0]?.href || item.media?.images?.[0]?.url;
+                                        const mileage = item.vehicle.mileage || item.vehicle.odometerReadingMiles;
+                                        const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
 
                                         return (
                                             <tr
                                                 key={uniqueId}
-                                                className={`transition relative ${videoExists
-                                                    ? 'bg-emerald-50 hover:bg-emerald-100'
-                                                    : 'hover:bg-gray-50'
+                                                className={`group border-b border-gray-100 transition-colors relative ${videoExists
+                                                    ? 'bg-emerald-50/50 hover:bg-emerald-50'
+                                                    : 'bg-white hover:bg-gray-50/80'
                                                     }`}
                                             >
+                                                {/* Row number */}
+                                                <td className="px-5 py-3.5 text-xs text-gray-300 font-medium">{globalIndex}</td>
+
                                                 {/* Vehicle Image & Name */}
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-16 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-20 h-14 rounded-xl overflow-hidden flex-shrink-0 border ${videoExists ? 'border-emerald-200' : 'border-gray-200'} bg-gray-100 shadow-sm`}>
                                                             {imageUrl ? (
                                                                 <img
                                                                     src={imageUrl}
@@ -714,48 +715,49 @@ const Stock = () => {
                                                                     }}
                                                                 />
                                                             ) : (
-                                                                <div className="flex items-center justify-center w-full h-full text-gray-400">
-                                                                    <FaCar size={20} />
+                                                                <div className="flex items-center justify-center w-full h-full text-gray-300">
+                                                                    <FaCar size={22} />
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-bold text-gray-800 text-sm">
+                                                            <h3 className="font-semibold text-gray-900 text-sm leading-tight">
                                                                 {item.vehicle.make} {item.vehicle.model}
                                                             </h3>
-                                                            <p className="text-xs text-blue-600 font-mono font-medium">{item.vehicle.registration}</p>
+                                                            <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-blue-600 font-mono text-xs rounded-md border border-blue-100">
+                                                                {item.vehicle.registration}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </td>
 
                                                 {/* Details */}
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm text-gray-600">{item.vehicle.derivative}</p>
-                                                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                            <span className="px-2 py-0.5 bg-gray-100 rounded border border-gray-200">
-                                                                {(item.vehicle.mileage || item.vehicle.odometerReadingMiles)?.toLocaleString()} miles
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                                <td className="px-5 py-3.5 hidden lg:table-cell max-w-xs">
+                                                    <p className="text-sm text-gray-600 truncate leading-snug">{item.vehicle.derivative}</p>
+                                                    {mileage && (
+                                                        <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full border border-gray-200">
+                                                            <FaTachometerAlt size={9} />
+                                                            {mileage.toLocaleString()} miles
+                                                        </span>
+                                                    )}
                                                 </td>
 
                                                 {/* Status */}
-                                                <td className="px-6 py-4">
+                                                <td className="px-5 py-3.5">
                                                     {videoExists ? (
-                                                        <div className="flex flex-col">
-                                                            <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                        <div>
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200">
+                                                                <FaVideo size={9} />
                                                                 {matchingVideos.length} Video{matchingVideos.length > 1 ? 's' : ''}
                                                             </span>
                                                             {matchingVideos[0]?.uploadedBy && (
-                                                                <span className="text-xs text-gray-500 mt-1">
+                                                                <p className="text-xs text-gray-400 mt-1 pl-0.5">
                                                                     by {matchingVideos[0].uploadedBy.name || matchingVideos[0].uploadedBy.username || 'Unknown'}
-                                                                </span>
+                                                                </p>
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-400">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 text-gray-400 text-xs font-medium rounded-full border border-gray-200">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
                                                             No Video
                                                         </span>
@@ -865,7 +867,7 @@ const Stock = () => {
                                                                 setSelectedFile(null);
                                                                 setUploadError('');
                                                             }}
-                                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow hover:shadow-md"
+                                                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm hover:shadow-md"
                                                         >
                                                             <FaCloudUploadAlt />
                                                             Upload

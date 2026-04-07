@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
-import { FaEye, FaUser, FaCar, FaCalendar, FaPhone, FaEnvelope, FaSearch, FaChevronDown, FaChevronUp, FaBan, FaCheckCircle } from 'react-icons/fa';
+import { FaEye, FaUser, FaCar, FaCalendar, FaPhone, FaEnvelope, FaSearch, FaChevronDown, FaChevronUp, FaBan, FaCheckCircle, FaPaperPlane, FaClock } from 'react-icons/fa';
 import API_URL from '../config';
 
 const DATE_FILTERS = [
@@ -18,6 +18,8 @@ const CustomerViews = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFilter, setDateFilter] = useState('all');
     const [expandedGroups, setExpandedGroups] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
     // Track suspended state per shareId: { [shareId]: true/false }
     const [suspendedMap, setSuspendedMap] = useState({});
     const [suspendLoading, setSuspendLoading] = useState({});
@@ -142,6 +144,9 @@ const CustomerViews = () => {
         ([, a], [, b]) => new Date(b.viewedAt) - new Date(a.viewedAt)
     );
 
+    const totalPages = Math.ceil(groupedRows.length / ITEMS_PER_PAGE);
+    const paginatedRows = groupedRows.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
     // ── Stats (based on ALL views, not filtered) ─────────────────────────────
     const totalViews = allViews.length;
     const uniqueCustomers = new Set(allViews.map(v => v.viewerEmail || v.viewerMobile || v.viewerName)).size;
@@ -194,7 +199,7 @@ const CustomerViews = () => {
                             type="text"
                             placeholder="Search by name, email, phone or vehicle…"
                             value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
+                            onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                             className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
                         />
                         {searchQuery && (
@@ -212,7 +217,7 @@ const CustomerViews = () => {
                         {DATE_FILTERS.map(f => (
                             <button
                                 key={f.value}
-                                onClick={() => setDateFilter(f.value)}
+                                onClick={() => { setDateFilter(f.value); setCurrentPage(1); }}
                                 className={`px-4 py-2.5 text-sm rounded-xl border font-medium transition
                                     ${dateFilter === f.value
                                         ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
@@ -256,22 +261,23 @@ const CustomerViews = () => {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0">
-                                    <tr>
-                                        <th className="px-6 py-4">Customer</th>
-                                        <th className="px-6 py-4">Contact</th>
-                                        <th className="px-6 py-4">Vehicle</th>
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-8">#</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Customer</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Vehicle</th>
                                         {user?.role === 'admin' && (
-                                            <th className="px-6 py-4">Sent By</th>
+                                            <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Sent By</th>
                                         )}
-                                        <th className="px-6 py-4">Last Viewed</th>
-                                        <th className="px-6 py-4">Sent / Expires</th>
-                                        <th className="px-6 py-4">Views</th>
-                                        <th className="px-6 py-4">Link</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Last Viewed</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Expires</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Views</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Link</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {groupedRows.map(([key, view]) => {
+                                <tbody>
+                                    {paginatedRows.map(([key, view], rowIndex) => {
+                                        const globalRowIndex = (currentPage - 1) * ITEMS_PER_PAGE + rowIndex + 1;
                                         const isExpanded = expandedGroups[key];
                                         const hasMultiple = view.count > 1;
                                         const shareId = view.shareId?._id || view.shareId;
@@ -279,114 +285,99 @@ const CustomerViews = () => {
                                         const isTogglingThis = shareId ? (suspendLoading[shareId] ?? false) : false;
 
                                         return [
-                                            <tr key={key} className={`transition-colors ${hasMultiple ? 'cursor-pointer' : ''} ${isSuspended ? 'bg-red-50/40' : 'hover:bg-gray-50'}`}
+                                            <tr key={key}
+                                                className={`group border-b border-gray-100 transition-colors ${hasMultiple ? 'cursor-pointer' : ''} ${isSuspended ? 'bg-red-50/30' : 'bg-white hover:bg-gray-50/80'}`}
                                                 onClick={() => hasMultiple && toggleGroup(key)}>
 
-                                                {/* Customer */}
-                                                <td className="px-6 py-4">
+                                                {/* Row number */}
+                                                <td className="px-5 py-3.5 text-xs text-gray-300 font-medium">{globalRowIndex}</td>
+
+                                                {/* Customer + Contact folded */}
+                                                <td className="px-5 py-3.5">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${isSuspended ? 'bg-red-100' : 'bg-gradient-to-br from-blue-100 to-indigo-200'}`}>
+                                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${isSuspended ? 'bg-red-100' : 'bg-gradient-to-br from-blue-100 to-indigo-200'}`}>
                                                             <FaUser size={13} className={isSuspended ? 'text-red-500' : 'text-blue-600'} />
                                                         </div>
                                                         <div>
-                                                            <span className="font-semibold text-gray-800 text-sm">
-                                                                {view.viewerName || 'Unknown Customer'}
-                                                            </span>
-                                                            {isSuspended && (
-                                                                <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded-full border border-red-200">
-                                                                    <FaBan size={9} /> Suspended
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-semibold text-gray-900 text-sm leading-tight">
+                                                                    {view.viewerName || 'Unknown'}
                                                                 </span>
-                                                            )}
+                                                                {isSuspended && (
+                                                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full border border-red-200">
+                                                                        <FaBan size={8} /> Suspended
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                {view.viewerEmail && (
+                                                                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                                        <FaEnvelope size={9} /> {view.viewerEmail}
+                                                                    </span>
+                                                                )}
+                                                                {view.viewerMobile && (
+                                                                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                                        <FaPhone size={9} /> {view.viewerMobile}
+                                                                    </span>
+                                                                )}
+                                                                {!view.viewerEmail && !view.viewerMobile && (
+                                                                    <span className="text-xs text-gray-300 italic">No contact</span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </td>
-
-                                                {/* Contact */}
-                                                <td className="px-6 py-4">
-                                                    {view.viewerEmail && (
-                                                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                                            <FaEnvelope size={10} className="text-gray-400" />
-                                                            {view.viewerEmail}
-                                                        </div>
-                                                    )}
-                                                    {view.viewerMobile && (
-                                                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                                                            <FaPhone size={10} className="text-gray-400" />
-                                                            {view.viewerMobile}
-                                                        </div>
-                                                    )}
-                                                    {!view.viewerEmail && !view.viewerMobile && (
-                                                        <span className="text-xs text-gray-400 italic">No contact info</span>
-                                                    )}
                                                 </td>
 
                                                 {/* Vehicle */}
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <FaCar size={12} className="text-gray-400 flex-shrink-0" />
-                                                        <div>
-                                                            <p className="text-sm font-medium text-gray-800">
-                                                                {view.make && view.model
-                                                                    ? `${view.make} ${view.model}`
-                                                                    : view.videoTitle}
-                                                            </p>
-                                                            {view.registration && (
-                                                                <span className="inline-block mt-0.5 text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">
-                                                                    {view.registration}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                <td className="px-5 py-3.5">
+                                                    <p className="text-sm font-medium text-gray-800 leading-tight">
+                                                        {view.make && view.model ? `${view.make} ${view.model}` : view.videoTitle}
+                                                    </p>
+                                                    {view.registration && (
+                                                        <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-blue-600 font-mono text-xs rounded-md border border-blue-100">
+                                                            {view.registration}
+                                                        </span>
+                                                    )}
                                                 </td>
 
                                                 {/* Sent By (Admin only) */}
                                                 {user?.role === 'admin' && (
-                                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                                    <td className="px-5 py-3.5 text-xs text-gray-500">
                                                         {view.shareId?.user?.name || view.shareId?.user?.username || view.uploadedBy?.name || view.uploadedBy?.username || '—'}
                                                     </td>
                                                 )}
 
                                                 {/* Last Viewed */}
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                        <FaCalendar size={11} className="text-gray-400" />
-                                                        <div>
-                                                            <p className="font-medium text-gray-700">
-                                                                {new Date(view.viewedAt).toLocaleDateString('en-GB', {
-                                                                    day: 'numeric', month: 'short', year: 'numeric'
-                                                                })}
-                                                            </p>
-                                                            <p className="text-xs text-gray-400">
-                                                                {new Date(view.viewedAt).toLocaleTimeString('en-GB', {
-                                                                    hour: '2-digit', minute: '2-digit'
-                                                                })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
+                                                <td className="px-5 py-3.5">
+                                                    <p className="text-sm font-medium text-gray-700">
+                                                        {new Date(view.viewedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    </p>
+                                                    <p className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                                                        <FaClock size={9} />
+                                                        {new Date(view.viewedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
                                                 </td>
 
-                                                {/* Sent / Expires */}
-                                                <td className="px-6 py-4">
+                                                {/* Sent / Expires — compact */}
+                                                <td className="px-5 py-3.5">
                                                     {view.shareId?.createdAt ? (
-                                                        <div className="text-xs space-y-1">
-                                                            <div className="flex items-center gap-1.5 text-gray-500">
-                                                                <span className="text-gray-400">📤</span>
-                                                                <span>{new Date(view.shareId.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                                                <FaPaperPlane size={9} />
+                                                                {new Date(view.shareId.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                             </div>
                                                             {view.shareId?.metadata?.expiresAt ? (
                                                                 (() => {
                                                                     const isExpired = new Date() > new Date(view.shareId.metadata.expiresAt);
                                                                     return (
-                                                                        <div className={`flex items-center gap-1.5 font-medium ${isExpired ? 'text-red-500' : 'text-emerald-600'}`}>
-                                                                            <span>{isExpired ? '🔴' : '🟢'}</span>
-                                                                            <span>{isExpired ? 'Expired ' : 'Expires '}
-                                                                                {new Date(view.shareId.metadata.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                                            </span>
-                                                                        </div>
+                                                                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${isExpired ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                                                                            <span className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                                                                            {isExpired ? 'Expired' : 'Expires'} {new Date(view.shareId.metadata.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                                                        </span>
                                                                     );
                                                                 })()
                                                             ) : (
-                                                                <span className="text-gray-300 italic">No expiry</span>
+                                                                <span className="text-xs text-gray-300 italic">No expiry</span>
                                                             )}
                                                         </div>
                                                     ) : (
@@ -395,23 +386,19 @@ const CustomerViews = () => {
                                                 </td>
 
                                                 {/* View count badge */}
-                                                <td className="px-6 py-4">
-                                                    {hasMultiple ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-100">
-                                                                <FaEye size={9} /> {view.count}x
-                                                            </span>
-                                                            {isExpanded
-                                                                ? <FaChevronUp size={11} className="text-gray-400" />
-                                                                : <FaChevronDown size={11} className="text-gray-400" />}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400">1 view</span>
-                                                    )}
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${hasMultiple ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                                                            <FaEye size={9} /> {view.count}x
+                                                        </span>
+                                                        {hasMultiple && (isExpanded
+                                                            ? <FaChevronUp size={10} className="text-gray-400" />
+                                                            : <FaChevronDown size={10} className="text-gray-400" />)}
+                                                    </div>
                                                 </td>
 
                                                 {/* Suspend / Enable Button */}
-                                                <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
+                                                <td className="px-5 py-3.5 text-right" onClick={e => e.stopPropagation()}>
                                                     {shareId ? (
                                                         <button
                                                             onClick={(e) => handleToggleSuspend(shareId, e)}
@@ -441,12 +428,12 @@ const CustomerViews = () => {
 
                                             // Expanded rows — show all individual view times
                                             hasMultiple && isExpanded && view.allTimes.map((time, i) => (
-                                                <tr key={`${key}-expanded-${i}`} className="bg-blue-50/40">
-                                                    <td className="px-6 py-2.5 pl-16" colSpan={user?.role === 'admin' ? 3 : 2}>
-                                                        <span className="text-xs text-gray-500 italic">View #{view.count - i}</span>
+                                                <tr key={`${key}-expanded-${i}`} className="bg-blue-50/30 border-b border-blue-100/60">
+                                                    <td className="px-5 py-2 pl-14" colSpan={user?.role === 'admin' ? 3 : 2}>
+                                                        <span className="text-xs text-gray-400 italic">View #{view.count - i}</span>
                                                     </td>
                                                     {user?.role === 'admin' && <td />}
-                                                    <td className="px-6 py-2.5">
+                                                    <td className="px-5 py-2">
                                                         <div className="flex items-center gap-2">
                                                             <FaCalendar size={10} className="text-blue-400" />
                                                             <span className="text-xs text-gray-600">
@@ -470,6 +457,44 @@ const CustomerViews = () => {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50/60">
+                                <p className="text-sm text-gray-500">
+                                    Showing <span className="font-semibold text-gray-700">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, groupedRows.length)}</span> of <span className="font-semibold text-gray-700">{groupedRows.length}</span> results
+                                </p>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                    >
+                                        Previous
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                        <button
+                                            key={page}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`w-8 h-8 text-sm rounded-lg border transition font-medium ${
+                                                page === currentPage
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                    : 'border-gray-200 text-gray-600 hover:bg-white'
+                                            }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
