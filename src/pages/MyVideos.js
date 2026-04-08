@@ -1,4 +1,5 @@
-import { useState, useEffect, useContext, useCallback } from 'react';
+import { useState, useEffect, useContext, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
@@ -10,13 +11,16 @@ import useToast from '../hooks/useToast';
 const ITEMS_PER_PAGE = 10;
 
 const MyVideos = () => {
+    const location = useLocation();
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [stockRegs, setStockRegs] = useState(new Set());
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
-    const [stockFilter, setStockFilter] = useState('instock'); // 'instock' | 'sold'
+    const [stockFilter, setStockFilter] = useState('instock');
+    const [highlightedId, setHighlightedId] = useState(null);
+    const rowRefs = useRef({});
     const { user } = useContext(AuthContext);
 
     // Send Modal States
@@ -83,6 +87,40 @@ const MyVideos = () => {
         fetchAllVehicleMetadata();
         fetchStock();
     }, [fetchVideos, fetchAllVehicleMetadata, fetchStock]);
+
+    // Jump to specific video from dashboard
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const videoId = params.get('videoId');
+        if (!videoId || loading || videos.length === 0) return;
+
+        const allFiltered = videos.filter(video => {
+            const normReg = (video.registration || '').replace(/\s/g, '').toUpperCase();
+            const isSoldVideo = normReg && stockRegs.size > 0 && !stockRegs.has(normReg);
+            return stockFilter === 'sold' ? isSoldVideo : !isSoldVideo;
+        });
+
+        const idx = allFiltered.findIndex(v => v._id === videoId);
+        if (idx === -1) {
+            // Video not in current filter — switch filter to find it
+            const soldIdx = videos.findIndex(v => v._id === videoId);
+            if (soldIdx !== -1) {
+                const normReg = (videos[soldIdx].registration || '').replace(/\s/g, '').toUpperCase();
+                const isSold = normReg && stockRegs.size > 0 && !stockRegs.has(normReg);
+                setStockFilter(isSold ? 'sold' : 'instock');
+            }
+            return;
+        }
+
+        const page = Math.floor(idx / ITEMS_PER_PAGE) + 1;
+        setCurrentPage(page);
+        setHighlightedId(videoId);
+
+        setTimeout(() => {
+            rowRefs.current[videoId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => setHighlightedId(null), 2500);
+        }, 150);
+    }, [location.search, videos, loading, stockRegs, stockFilter]);
 
     const copyLink = async (id) => {
         let shareId = '';
@@ -336,7 +374,7 @@ const MyVideos = () => {
                                                 displayName = displayName.replace(regPattern, '');
                                             }
                                             return (
-                                            <tr key={video._id} className="group border-b border-gray-100 bg-white hover:bg-gray-50/80 transition-colors">
+                                            <tr key={video._id} ref={el => rowRefs.current[video._id] = el} className={`group border-b border-gray-100 transition-colors ${highlightedId === video._id ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : 'bg-white hover:bg-gray-50/80'}`}>
                                                 {/* Row number */}
                                                 <td className="px-5 py-3.5 text-xs text-gray-300 font-medium">{globalIndex}</td>
 

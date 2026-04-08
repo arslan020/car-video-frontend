@@ -19,7 +19,7 @@ const Header = ({ user, onLogout, onToggleSidebar }) => {
             </div>
 
             {/* Right side (User Profile) */}
-            <div 
+            <div
                 className="relative"
                 onMouseEnter={() => setIsOpen(true)}
                 onMouseLeave={() => setIsOpen(false)}

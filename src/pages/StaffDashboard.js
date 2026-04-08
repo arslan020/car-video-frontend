@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardLayout from '../components/DashboardLayout';
 import AuthContext from '../context/AuthContext';
-import { FaCloudUploadAlt, FaVideo, FaLink, FaCar, FaEye, FaClock, FaChartLine, FaTimes, FaArrowRight, FaFire, FaTrophy, FaCalendarAlt } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaVideo, FaLink, FaCar, FaEye, FaClock, FaChartLine, FaTimes, FaArrowRight, FaFire, FaTrophy, FaCalendarAlt, FaPlay, FaUser } from 'react-icons/fa';
 import API_URL from '../config';
 import useToast from '../hooks/useToast';
 
@@ -13,6 +13,9 @@ const StaffDashboard = () => {
     const [stock, setStock] = useState([]);
     const [loadingVideos, setLoadingVideos] = useState(true);
     const { user } = useContext(AuthContext);
+
+    // Video Preview Modal
+    const [selectedVideo, setSelectedVideo] = useState(null);
 
     // Reserve Link Modal
     const [reserveLinkModalOpen, setReserveLinkModalOpen] = useState(false);
@@ -66,24 +69,6 @@ const StaffDashboard = () => {
         fetchAllVehicleMetadata();
     }, [fetchVideos, fetchStock, fetchAllVehicleMetadata]);
 
-    const copyLink = async (id) => {
-        let shareId = '';
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.patch(`${API_URL}/api/videos/${id}/share`, {}, config);
-            shareId = data.shareId;
-        } catch (error) {
-            console.error('Failed to register share link:', error);
-        }
-        let link = `${window.location.origin}/view/${id}`;
-        if (shareId) link += `?s=${shareId}`;
-        try {
-            await navigator.clipboard.writeText(link);
-            toast.success({ title: 'Copied', message: 'Link copied to clipboard.' });
-        } catch {
-            toast.error({ title: 'Copy failed', message: 'Could not copy link. Please try again.' });
-        }
-    };
 
     const openReserveLinkModal = async (video) => {
         const normReg = (video.registration || '').replace(/\s/g, '').toUpperCase();
@@ -149,13 +134,20 @@ const StaffDashboard = () => {
             const reg = (v.registration || '').replace(/\s/g, '').toUpperCase();
             return reg && stockRegs.size > 0 && !stockRegs.has(reg);
         })
-        .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
-        .slice(0, 5);
+        .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
     const recentVideos = videos.filter(v => {
         const normReg = (v.registration || '').replace(/\s/g, '').toUpperCase();
         const isSold = normReg && stockRegs.size > 0 && !stockRegs.has(normReg);
         return !isSold;
-    }).slice(0, 5);
+    });
+
+    const agedVideos = [...videos]
+        .filter(v => {
+            const normReg = (v.registration || '').replace(/\s/g, '').toUpperCase();
+            const isSold = normReg && stockRegs.size > 0 && !stockRegs.has(normReg);
+            return !isSold && (v.viewCount || 0) > 0;
+        })
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const videosThisWeek = videos.filter(v => {
         const uploadDate = new Date(v.createdAt);
         const weekAgo = new Date();
@@ -170,7 +162,7 @@ const StaffDashboard = () => {
         })
         .reduce((sum, v) => sum + (v.viewCount || 0), 0);
 
-    const VideoRow = ({ video, showRank, rank }) => {
+    const VideoRow = ({ video, showRank, rank, showDate }) => {
         const normReg = (video.registration || '').replace(/\s/g, '').toUpperCase();
         const isSold = normReg && stockRegs.size > 0 && !stockRegs.has(normReg);
         let displayName = video.title || video.originalName || 'Untitled Video';
@@ -179,7 +171,7 @@ const StaffDashboard = () => {
             displayName = displayName.replace(regPattern, '');
         }
         return (
-            <tr className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate('/staff/videos')}>
+            <tr className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate(`/staff/videos?videoId=${video._id}`)}>
                 <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                         {showRank && (
@@ -187,7 +179,10 @@ const StaffDashboard = () => {
                                 {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
                             </span>
                         )}
-                        <div className="w-14 h-10 bg-gray-900 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center">
+                        <div
+                            className="w-14 h-10 bg-gray-900 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center relative group/thumb cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); setSelectedVideo(video); }}
+                        >
                             {video.thumbnailUrl || video.cloudflareVideoId || video.youtubeVideoId ? (
                                 <img
                                     src={video.thumbnailUrl ||
@@ -201,6 +196,11 @@ const StaffDashboard = () => {
                             ) : (
                                 <FaVideo className="text-gray-600" size={14} />
                             )}
+                            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 transition-all flex items-center justify-center">
+                                <div className="w-6 h-6 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity shadow">
+                                    <FaPlay className="text-gray-800 ml-0.5" size={8} />
+                                </div>
+                            </div>
                         </div>
                         <div className="min-w-0">
                             <p className="font-semibold text-gray-900 text-sm truncate max-w-[160px]">{displayName}</p>
@@ -211,6 +211,11 @@ const StaffDashboard = () => {
                                 {isSold && (
                                     <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-xs font-semibold rounded border border-red-200">
                                         Sold
+                                    </span>
+                                )}
+                                {showDate && video.createdAt && (
+                                    <span className="text-xs text-orange-500 font-medium">
+                                        {new Date(video.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                     </span>
                                 )}
                             </div>
@@ -337,7 +342,7 @@ const StaffDashboard = () => {
                                 <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
                                     <div className="h-3 w-32 bg-gray-200 rounded"></div>
                                 </div>
-                                {[0,1,2,3,4].map(j => (
+                                {[0, 1, 2, 3, 4].map(j => (
                                     <div key={j} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50">
                                         <div className="w-14 h-10 bg-gray-200 rounded-lg flex-shrink-0"></div>
                                         <div className="flex-1 space-y-1.5">
@@ -351,37 +356,41 @@ const StaffDashboard = () => {
                         ))}
                     </div>
                 ) : videos.length > 0 && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                         {/* Recent Uploads */}
-                        <div>
+                        <div className="flex flex-col">
                             <div className="flex items-center justify-between mb-3">
                                 <div>
                                     <h2 className="text-base font-semibold text-gray-900 tracking-tight">Recent Uploads</h2>
-                                    <p className="text-xs text-gray-500 mt-0.5">Last 5 uploaded videos</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">Uploaded videos</p>
                                 </div>
                                 <button onClick={() => navigate('/staff/videos')} className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
                                     View all <FaArrowRight size={9} />
                                 </button>
                             </div>
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
                                 <table className="w-full text-left">
-                                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
+                                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100 sticky top-0">
                                         <tr>
                                             <th className="px-4 py-3">Video</th>
                                             <th className="px-4 py-3 text-right">Views</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {recentVideos.map((video) => (
-                                            <VideoRow key={video._id} video={video} showRank={false} />
-                                        ))}
-                                    </tbody>
                                 </table>
+                                <div className="overflow-y-auto max-h-96">
+                                    <table className="w-full text-left">
+                                        <tbody className="divide-y divide-gray-50">
+                                            {recentVideos.map((video) => (
+                                                <VideoRow key={video._id} video={video} showRank={false} />
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
                         {/* Top Performing */}
-                        <div>
+                        <div className="flex flex-col">
                             <div className="flex items-center justify-between mb-3">
                                 <div>
                                     <h2 className="text-base font-semibold text-gray-900 tracking-tight flex items-center gap-2">
@@ -391,10 +400,10 @@ const StaffDashboard = () => {
                                     <p className="text-xs text-gray-500 mt-0.5">Most viewed videos</p>
                                 </div>
                                 <button onClick={() => navigate('/staff/views')} className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-                                    Analytics <FaArrowRight size={9} />
+                                    Views <FaArrowRight size={9} />
                                 </button>
                             </div>
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
                                         <tr>
@@ -402,12 +411,60 @@ const StaffDashboard = () => {
                                             <th className="px-4 py-3 text-right">Views</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {topVideos.map((video, idx) => (
-                                            <VideoRow key={video._id} video={video} showRank={true} rank={idx + 1} />
-                                        ))}
-                                    </tbody>
                                 </table>
+                                <div className="overflow-y-auto max-h-96">
+                                    <table className="w-full text-left">
+                                        <tbody className="divide-y divide-gray-50">
+                                            {topVideos.map((video, idx) => (
+                                                <VideoRow key={video._id} video={video} showRank={true} rank={idx + 1} />
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Aged Uploads */}
+                        <div className="flex flex-col">
+                            <div className="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 className="text-base font-semibold text-gray-900 tracking-tight flex items-center gap-2">
+                                        <FaClock className="text-orange-400" size={14} />
+                                        Aged Uploads
+                                    </h2>
+                                    <p className="text-xs text-gray-500 mt-0.5">In stock with views</p>
+                                </div>
+                                <button onClick={() => navigate('/staff/videos')} className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                                    View all <FaArrowRight size={9} />
+                                </button>
+                            </div>
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1">
+                                {agedVideos.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full py-10 text-center text-gray-400">
+                                        <FaClock size={22} className="mb-2 text-gray-300" />
+                                        <p className="text-sm">No aged videos with views</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <table className="w-full text-left">
+                                            <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
+                                                <tr>
+                                                    <th className="px-4 py-3">Video</th>
+                                                    <th className="px-4 py-3 text-right">Views</th>
+                                                </tr>
+                                            </thead>
+                                        </table>
+                                        <div className="overflow-y-auto max-h-96">
+                                            <table className="w-full text-left">
+                                                <tbody className="divide-y divide-gray-50">
+                                                    {agedVideos.map((video) => (
+                                                        <VideoRow key={video._id} video={video} showRank={false} showDate={true} />
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -431,6 +488,98 @@ const StaffDashboard = () => {
                     </div>
                 )}
             </div>
+
+            {/* Video Preview Modal */}
+            {selectedVideo && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSelectedVideo(null)}>
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+
+                    <div
+                        className="relative w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
+                        style={{ background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close button */}
+                        <button
+                            onClick={() => setSelectedVideo(null)}
+                            className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-sm border border-white/10"
+                        >
+                            <FaTimes size={14} />
+                        </button>
+
+                        {/* Video */}
+                        <div className="aspect-video w-full bg-black">
+                            {selectedVideo.videoSource === 'cloudflare' || selectedVideo.videoSource === 'youtube' ? (
+                                <iframe
+                                    src={selectedVideo.videoUrl}
+                                    className="w-full h-full border-0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    title={selectedVideo.title}
+                                />
+                            ) : (
+                                <video src={selectedVideo.videoUrl} controls autoPlay className="w-full h-full object-contain" />
+                            )}
+                        </div>
+
+                        {/* Info strip */}
+                        <div className="px-5 py-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <h3 className="text-white font-bold text-base leading-tight truncate">
+                                        {(() => {
+                                            let name = selectedVideo.title || selectedVideo.originalName || 'Video Preview';
+                                            if (selectedVideo.registration) {
+                                                name = name.replace(new RegExp(`\\s*-\\s*${selectedVideo.registration}`, 'i'), '');
+                                            }
+                                            return name;
+                                        })()}
+                                    </h3>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                        {selectedVideo.registration && (
+                                            <span className="px-2 py-0.5 bg-white/10 text-white/80 text-xs font-mono rounded-md border border-white/10">
+                                                {selectedVideo.registration}
+                                            </span>
+                                        )}
+                                        <span className="flex items-center gap-1 text-white/50 text-xs">
+                                            <FaEye size={10} />
+                                            {selectedVideo.viewCount || 0} views
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Who Viewed */}
+                            {selectedVideo.views && selectedVideo.views.length > 0 && (
+                                <div className="mt-4 border-t border-white/10 pt-4">
+                                    <p className="text-xs font-semibold text-white/50 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                        <FaEye size={10} /> Who Viewed This Link
+                                    </p>
+                                    <div className="space-y-2 max-h-36 overflow-y-auto pr-1 custom-scroll">
+                                        {[...selectedVideo.views].reverse().map((view, idx) => (
+                                            <div key={idx} className="flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors rounded-xl px-3 py-2.5 border border-white/10">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-7 h-7 rounded-full bg-blue-500/20 border border-blue-400/30 flex items-center justify-center flex-shrink-0">
+                                                        <FaUser size={11} className="text-blue-300" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-white text-xs font-semibold">{view.viewerName || 'Unknown Customer'}</p>
+                                                        <p className="text-white/40 text-xs">{view.viewerEmail || view.viewerMobile || 'No contact info'}</p>
+                                                    </div>
+                                                </div>
+                                                <span className="text-white/40 text-xs shrink-0">
+                                                    {new Date(view.viewedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Reserve Link Modal */}
             {reserveLinkModalOpen && (
